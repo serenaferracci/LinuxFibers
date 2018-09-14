@@ -5,47 +5,18 @@
 #include <string.h>
 #include <sys/ioctl.h>
  
-#include "query_ioctl.h"
+#include "fiber_ioctl.h"
  
 void get_vars(int fd)
 {
-    query_arg_t q;
+    fiber_arg_t q;
  
-    if (ioctl(fd, ConvertThreadToFiber(), &q) == -1)
+    if (ioctl(fd, ConvertThreadToFiber, &q) == -1)
     {
         perror("query_apps ioctl get");
     }
 }
-void clr_vars(int fd)
-{
-    if (ioctl(fd, QUERY_CLR_VARIABLES) == -1)
-    {
-        perror("query_apps ioctl clr");
-    }
-}
-void set_vars(int fd)
-{
-    int v;
-    query_arg_t q;
- 
-    printf("Enter Status: ");
-    scanf("%d", &v);
-    getchar();
-    q.status = v;
-    printf("Enter Dignity: ");
-    scanf("%d", &v);
-    getchar();
-    q.dignity = v;
-    printf("Enter Ego: ");
-    scanf("%d", &v);
-    getchar();
-    q.ego = v;
- 
-    if (ioctl(fd, QUERY_SET_VARIABLES, &q) == -1)
-    {
-        perror("query_apps ioctl set");
-    }
-}
+
  
 int main(int argc, char *argv[])
 {
@@ -98,12 +69,6 @@ int main(int argc, char *argv[])
     {
         case e_get:
             get_vars(fd);
-            break;
-        case e_clr:
-            clr_vars(fd);
-            break;
-        case e_set:
-            set_vars(fd);
             break;
         default:
             break;

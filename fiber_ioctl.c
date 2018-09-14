@@ -7,7 +7,7 @@
 #include <linux/errno.h>
 #include <asm/uaccess.h>
  
-#include "query_ioctl.h"
+#include "fiber_ioctl.h"
  
 #define FIRST_MINOR 0
 #define MINOR_CNT 1
@@ -15,7 +15,6 @@
 static dev_t dev;
 static struct cdev c_dev;
 static struct class *cl;
-static int status = 1, dignity = 3, ego = 5;
  
 static int my_open(struct inode *i, struct file *f)
 {
@@ -31,12 +30,11 @@ static int my_ioctl(struct inode *i, struct file *f, unsigned int cmd, unsigned 
 static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 #endif
 {
-    query_arg_t q;
  
     switch (cmd)
     {
-        case ConvertThreadToFiber():
-            printf("Ciaooo\n");
+        case ConvertThreadToFiber:
+            printk("Ciaooo\n");
             break;
         default:
             return -EINVAL;
@@ -57,7 +55,7 @@ static struct file_operations query_fops =
 #endif
 };
  
-static int __init query_ioctl_init(void)
+static int __init fiber_ioctl_init(void)
 {
     int ret;
     struct device *dev_ret;
@@ -92,7 +90,7 @@ static int __init query_ioctl_init(void)
     return 0;
 }
  
-static void __exit query_ioctl_exit(void)
+static void __exit fiber_ioctl_exit(void)
 {
     device_destroy(cl, dev);
     class_destroy(cl);
@@ -100,8 +98,8 @@ static void __exit query_ioctl_exit(void)
     unregister_chrdev_region(dev, MINOR_CNT);
 }
  
-module_init(query_ioctl_init);
-module_exit(query_ioctl_exit);
+module_init(fiber_ioctl_init);
+module_exit(fiber_ioctl_exit);
  
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Anil Kumar Pugalia <email_at_sarika-pugs_dot_com>");
