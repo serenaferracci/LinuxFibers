@@ -12,12 +12,12 @@ typedef struct
     long long value;
 } fiber_arg_t;
  
-#define ConvertThreadToFiber _IOR('q', 1, fiber_arg_t*)
-#define CreateFiber 		 _IO('q', 2, fiber_arg_t*)
-#define SwitchToFiber 		 _IO('q', 3, fiber_arg_t*)
-#define FlsAlloc 			 _IO('q', 4, fiber_arg_t*)
-#define FlsFree				 _IO('q', 5, fiber_arg_t*)
-#define FlsGetValue			 _IOR('q', 6, fiber_arg_t*)
-#define FlsSetValue			 _IOW('q', 7, fiber_arg_t*)
+#define CONVERTTOFIBER       _IO('q', 1)
+#define CreateFiber 		 _IO('q', 2)
+#define SwitchToFiber 		 _IO('q', 3)
+#define FlsAlloc 			 _IO('q', 4)
+#define FlsFree				 _IO('q', 5)
+#define FlsGetValue			 _IO('q', 6)
+#define FlsSetValue			 _IO('q', 7)
  
 #endif

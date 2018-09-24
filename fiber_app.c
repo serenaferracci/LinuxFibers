@@ -5,8 +5,8 @@
 #include <string.h>
 #include <sys/ioctl.h>
  
-#include "fiber_ioctl.h"
- 
+#include "function_calls.h"
+
 void get_vars(int fd)
 {
     fiber_arg_t q;
