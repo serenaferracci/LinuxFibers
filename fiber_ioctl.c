@@ -33,7 +33,7 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
  
     switch (cmd)
     {
-        case ConvertThreadToFiber:
+        case CONVERTTOFIBER:
             printk("Ciaooo\n");
             break;
         default:
