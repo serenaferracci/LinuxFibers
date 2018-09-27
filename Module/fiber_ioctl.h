@@ -4,12 +4,25 @@
 
 typedef struct
 {
-    size_t dwStackSize;
+    unsigned long dwStackSize;
     void* lpStartAddress;
     void* lpParameter;
-    void* lpFiber;
+} create_arg_t;
+
+typedef struct
+{
     long dwFlsIndex;
-    long long value;
+    long long lpFlsData;
+} fls_set_arg_t;
+
+
+typedef struct
+{
+	bool running;
+	int index;
+	void* param;
+	struct pt_regs* regs;
+	
 } fiber_arg_t;
  
 #define CONVERTTOFIBER       _IO('q', 1)

@@ -7,21 +7,10 @@
  
 #include "function_calls.h"
 
-void get_vars(int fd)
-{
-    fiber_arg_t q;
- 
-    if (ioctl(fd, ConvertThreadToFiber, &q) == -1)
-    {
-        perror("query_apps ioctl get");
-    }
-}
 
  
 int main(int argc, char *argv[])
 {
-    char *file_name = "/dev/query";
-    int fd;
     enum
     {
         e_get,
@@ -58,23 +47,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Usage: %s [-g | -c | -s]\n", argv[0]);
         return 1;
     }
-    fd = open(file_name, O_RDWR);
-    if (fd == -1)
-    {
-        perror("query_apps open");
-        return 2;
-    }
- 
-    switch (option)
-    {
-        case e_get:
-            get_vars(fd);
-            break;
-        default:
-            break;
-    }
- 
-    close (fd);
  
     return 0;
 }
