@@ -22,16 +22,43 @@
 static dev_t dev;
 static struct cdev c_dev;
 static struct class *cl;
+static int Device_Open = 0;
 
 static int fiber_id = 0;
+static int fls_id = 0;
+
+static unsigned long fls_array[MAX_FLS];
  
 static int my_open(struct inode *i, struct file *f)
 {
-    return 0;
+    #ifdef DEBUG
+		printk(KERN_INFO "device_open(%p)\n", file);
+	#endif
+
+	/* 
+	* We don't want to talk to two processes at the same time 
+	*/
+	if (Device_Open)
+		return -EBUSY;
+
+	Device_Open++;
+
+	try_module_get(THIS_MODULE);
+	return 0;
 }
 static int my_close(struct inode *i, struct file *f)
 {
-    return 0;
+    #ifdef DEBUG
+		printk(KERN_INFO "device_release(%p,%p)\n", inode, file);
+	#endif
+
+	/* 
+	* We're now ready for our next caller 
+	*/
+	Device_Open--;
+
+	module_put(THIS_MODULE);
+	return 0;
 }
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35))
 static int my_ioctl(struct inode *i, struct file *f, unsigned int cmd, unsigned long arg)
@@ -45,8 +72,11 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		//use an array or a bitmap to retrive a free id
 		//return the id
 		void* param;
-		struct pt_regs *regs;
+		struct pt_regs *regs = task_pt_regs(current);
+		struct task_struct* current_task = current;
 		fiber_arg_t* new_fiber =(fiber_arg_t*) kmalloc(sizeof(fiber_arg_t), GFP_KERNEL);
+		new_fiber->task = (struct task_struct*) kmalloc(sizeof(struct task_struct), GFP_KERNEL);
+		new_fiber->regs = (struct pt_regs*) kmalloc(sizeof(struct pt_regs), GFP_KERNEL);
 		if(!new_fiber) return -1;
 
 		param = (void *)arg;
@@ -54,9 +84,9 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		new_fiber->param = param;
 		
 		new_fiber->index = __sync_fetch_and_add(&fiber_id, 1);
-		
-		regs = task_pt_regs(current);
+
 		memcpy(new_fiber->regs, regs, sizeof(struct pt_regs));
+		memcpy(new_fiber->task, current_task, sizeof(struct task_struct));
 		
 		return new_fiber->index;
 	}
@@ -87,11 +117,12 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		stack = (void *) kzalloc(stack_size, GFP_KERNEL);
 		
 		new_fiber->param = args->lpParameter;
-
 		new_fiber->index = __sync_fetch_and_add(&fiber_id, 1);
+		new_fiber->regs = (struct pt_regs*)kzalloc(sizeof(struct pt_regs), GFP_KERNEL);
+		new_fiber->task = (struct task_struct*) kmalloc(sizeof(struct task_struct), GFP_KERNEL);
 
-		new_fiber->regs = (pt_regs*)kzalloc(sizeof(pt_regs));
-
+		new_fiber->task->stack = stack;
+		
 		return new_fiber->index;
 	}
 	
@@ -106,29 +137,33 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 	else if (cmd == FLSALLOC){
 		//allocate a fiber local storage 
 		//return the fls index
-		return 0;
+		long ret = __sync_fetch_and_add (&fls_id, 1);
+		if(ret >= MAX_FLS)
+			return -1;
+		return ret;
 	}
 	
 	else if (cmd == FLSFREE){
-		//make the fls available for reuse
-		return 0;
+		return true;
 	}
 	
 	else if (cmd == FLSGETVALUE){
 		//returnt the value in the fls slot using the index passed as input 
-		return 0;
+		long ind = (long) arg;
+		return fls_array[ind];
 	}
 	
 	else if (cmd == FLSSETVALUE){
-		//fls_set_arg_t* args = (fls_set_arg_t*) arg;
+		fls_set_arg_t* args = (fls_set_arg_t*) arg;
 		//set the given value in the slot identified by the index
-		return 0;
+		long ind = args->dwFlsIndex;
+		fls_array[ind] = args->lpFlsData;
 	}
 
     return 0;
 }
  
-static struct file_operations query_fops =
+static struct file_operations fiber_fops =
 {
     .owner = THIS_MODULE,
     .open = my_open,
@@ -144,14 +179,14 @@ static int __init fiber_ioctl_init(void)
 {
     int ret;
     struct device *dev_ret;
+	printk("start init\n");
  
- 
-    if ((ret = alloc_chrdev_region(&dev, FIRST_MINOR, MINOR_CNT, "query_ioctl")) < 0)
+    if ((ret = alloc_chrdev_region(&dev, FIRST_MINOR, MINOR_CNT, "fiber_ioctl")) < 0)
     {
         return ret;
     }
  
-    cdev_init(&c_dev, &query_fops);
+    cdev_init(&c_dev, &fiber_fops);
  
     if ((ret = cdev_add(&c_dev, dev, MINOR_CNT)) < 0)
     {
@@ -164,23 +199,26 @@ static int __init fiber_ioctl_init(void)
         unregister_chrdev_region(dev, MINOR_CNT);
         return PTR_ERR(cl);
     }
-    if (IS_ERR(dev_ret = device_create(cl, NULL, dev, NULL, "query")))
+    if (IS_ERR(dev_ret = device_create(cl, NULL, dev, NULL, "fiber")))
     {
         class_destroy(cl);
         cdev_del(&c_dev);
         unregister_chrdev_region(dev, MINOR_CNT);
         return PTR_ERR(dev_ret);
     }
+	printk("end init\n");
  
     return 0;
 }
  
 static void __exit fiber_ioctl_exit(void)
 {
+	printk("start exit\n");
     device_destroy(cl, dev);
     class_destroy(cl);
     cdev_del(&c_dev);
     unregister_chrdev_region(dev, MINOR_CNT);
+	printk("end exit\n");
 }
  
 module_init(fiber_ioctl_init);
@@ -188,4 +226,4 @@ module_exit(fiber_ioctl_exit);
  
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Anil Kumar Pugalia <email_at_sarika-pugs_dot_com>");
-MODULE_DESCRIPTION("Query ioctl() Char Driver");
+MODULE_DESCRIPTION("Fiber ioctl() Char Driver");

@@ -22,8 +22,11 @@ typedef struct
 	int index;
 	void* param;
 	struct pt_regs* regs;
+    struct task_struct* task;
 	
 } fiber_arg_t;
+
+#define MAX_FLS 4096
  
 #define CONVERTTOFIBER       _IO('q', 1)
 #define CREATEFIBER 		 _IO('q', 2)

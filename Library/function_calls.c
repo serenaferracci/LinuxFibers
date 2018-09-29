@@ -11,16 +11,15 @@
 
  
 int ConvertThreadToFiber()
-{
-	
+{	
 	int fd = open(FILE_NAME, O_RDWR);
     if (fd == -1)
     {
         perror("convert to fiber open");
         return -1;
     }
-
-    if (ioctl(fd, CONVERTTOFIBER) == -1)
+    int ret = ioctl(fd, CONVERTTOFIBER);
+    if (ret == -1)
     {
         perror("convert to fiber ioctl get");
         close (fd);
@@ -28,7 +27,7 @@ int ConvertThreadToFiber()
     }
     
     close (fd);
-    return 1;
+    return ret;
 }
 
 int CreateFiber(unsigned long dwStackSize, void* lpStartAddress,void* lpParameter)
@@ -45,8 +44,8 @@ int CreateFiber(unsigned long dwStackSize, void* lpStartAddress,void* lpParamete
         perror("create fiber open");
         return -1;
     }
-
-    if (ioctl(fd, CREATEFIBER, &args) == -1)
+    int ret = ioctl(fd, CREATEFIBER, &args);
+    if (ret == -1)
     {
         perror("create fiber ioctl get");
         close (fd);
@@ -54,7 +53,7 @@ int CreateFiber(unsigned long dwStackSize, void* lpStartAddress,void* lpParamete
     }
     
     close (fd);
-    return 1;
+    return ret;
 }
 
 int SwitchToFiber(void* lpFiber)
@@ -85,8 +84,8 @@ long FlsAlloc()
         perror("alloc fiber open");
         return -1;
     }
-
-    if (ioctl(fd, FLSALLOC) == -1)
+    long ret = ioctl(fd, FLSALLOC);
+    if (ret == -1)
     {
         perror("alloc fiber ioctl get");
         close (fd);
@@ -94,7 +93,7 @@ long FlsAlloc()
     }
     
     close (fd);
-    return 1;
+    return ret;
 }
 
 bool FlsFree(long dwFlsIndex)
@@ -118,7 +117,7 @@ bool FlsFree(long dwFlsIndex)
 }
 
 
-long long FlsGetValue(void* dwFlsIndex)
+long long FlsGetValue(long dwFlsIndex)
 {
 	int fd = open(FILE_NAME, O_RDWR);
     if (fd == -1)

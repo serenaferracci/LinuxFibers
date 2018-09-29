@@ -16,7 +16,7 @@ long FlsAlloc();
 
 bool FlsFree(long dwFlsIndex);
 
-long long FlsGetValue(void* dwFlsIndex);
+long long FlsGetValue(long dwFlsIndex);
 
 void FlsSetValue(long dwFlsIndex, long long lpFlsData);
 

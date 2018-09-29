@@ -1,3 +1,6 @@
+CONFIG_MODULE_SIG=n
+CONFIG_MODULE_SIG_ALL=n
+
 # If called directly from the command line, invoke the kernel build system.
 ifeq ($(KERNELRELEASE),)
  
