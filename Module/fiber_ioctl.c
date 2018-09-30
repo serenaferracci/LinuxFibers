@@ -170,8 +170,15 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 	
 	else if (cmd == FLSGETVALUE){
 		//returnt the value in the fls slot using the index passed as input 
+		long long ret;
 		long ind = (long) arg;
-		return fls_array[ind];
+
+		if(ind >= fls_id) return -1;
+
+		spin_lock_irq(&lock_fls);
+		ret = fls_array[ind];
+		spin_unlock_irq(&lock_fls);
+		return ret;
 	}
 	
 	else if (cmd == FLSSETVALUE){
@@ -183,7 +190,10 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 
 		//set the given value in the slot identified by the index
 		ind = args->dwFlsIndex;
+
+		spin_lock_irq(&lock_fls);
 		fls_array[ind] = args->lpFlsData;
+		spin_unlock_irq(&lock_fls);
 	}
 
     return 0;

@@ -31,7 +31,7 @@ LIST_HEAD(listStart);
 
 #define DEFINE_SPINLOCK(x) spinlock_t x = __SPIN_LOCK_UNLOCKED(x)
 
-DEFINE_SPINLOCK(init_lock);
+DEFINE_SPINLOCK(lock_fls);
 
 #define MAX_FLS 4096
 #define MAX_FIBER 4096

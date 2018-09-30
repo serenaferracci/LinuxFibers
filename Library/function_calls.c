@@ -127,7 +127,9 @@ long long FlsGetValue(long dwFlsIndex)
         return -1;
     }
 
-    if (ioctl(fd, FLSALLOC, &dwFlsIndex) == -1)
+    long long ret = ioctl(fd, FLSALLOC, &dwFlsIndex);
+
+    if (ret == -1)
     {
         perror("get fiber ioctl get");
         close (fd);
@@ -135,7 +137,7 @@ long long FlsGetValue(long dwFlsIndex)
     }
     
     close (fd);
-    return 1;
+    return ret;
 }
 
 void FlsSetValue(long dwFlsIndex, long long lpFlsData)
