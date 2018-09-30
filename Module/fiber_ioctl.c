@@ -35,10 +35,6 @@ int converted_thread = 0;
  
 static int my_open(struct inode *i, struct file *f)
 {
-    #ifdef DEBUG
-		printk(KERN_INFO "device_open(%p)\n", file);
-	#endif
-
 	/* 
 	* We don't want to talk to two processes at the same time 
 	*/
@@ -52,10 +48,6 @@ static int my_open(struct inode *i, struct file *f)
 }
 static int my_close(struct inode *i, struct file *f)
 {
-    #ifdef DEBUG
-		printk(KERN_INFO "device_release(%p,%p)\n", inode, file);
-	#endif
-
 	/* 
 	* We're now ready for our next caller 
 	*/
@@ -108,7 +100,7 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		if(!new_fiber || converted_thread == 0) return -1;
 
 		rc = raw_copy_from_user(args, (void *)arg, sizeof(create_arg_t));
-      	printk(KERN_INFO "\ncopy_from_user() = %d.\n", rc);
+
 		//alloc a stack (size of the stack = dwStackSize, allign to 16 bytes), if 0 use the default stack
 		//set up the execution to begin at the specific adress (lpStartAddress), used to schedule this fiber
 		//save parameters
@@ -146,16 +138,19 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		//use an hashmap to easy retrive the fiber given the address
 		//does not return
 
-		int ind = (int)arg;
-		if(ind > fiber_id) return -1;
+		struct list_head* current_node;
+ 		fiber_arg_t* currFiber;
+		fiber_arg_t* searchedFiber = NULL;
 
-		/*struct list_head* current;
- 		struct point2D* currPoint;
+		int ind = (int)arg;
+		if(ind >= fiber_id) return -1;
 		
-		list_for_each(current, &listStart){
-			currPoint = list_entry(current,struct point2D,list);
-			printf("x=%d, y=%d\n",currPoint->x,currPoint->y);
-		}*/
+		list_for_each(current_node, &listStart){
+			currFiber = list_entry(current_node,fiber_arg_t,f_list);
+			if(currFiber->index == ind) searchedFiber = currFiber;
+		}
+
+		if(searchedFiber == NULL) return -1;
 
 		return 0;
 	}
@@ -185,7 +180,7 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 
 		fls_set_arg_t* args = (fls_set_arg_t*) kmalloc (sizeof(fls_set_arg_t), GFP_KERNEL);
 		rc = raw_copy_from_user(args, (void *)arg, sizeof(fls_set_arg_t));
-      	printk(KERN_INFO "\ncopy_from_user() = %d.\n", rc);
+
 		//set the given value in the slot identified by the index
 		ind = args->dwFlsIndex;
 		fls_array[ind] = args->lpFlsData;
@@ -210,8 +205,6 @@ static int __init fiber_ioctl_init(void)
 {
     int ret;
     struct device *dev_ret;
-	
-	printk("start init\n");
  
     if ((ret = alloc_chrdev_region(&dev, FIRST_MINOR, MINOR_CNT, "fiber_ioctl")) < 0)
     {
@@ -238,19 +231,16 @@ static int __init fiber_ioctl_init(void)
         unregister_chrdev_region(dev, MINOR_CNT);
         return PTR_ERR(dev_ret);
     }
-	printk("end init\n");
  
     return 0;
 }
  
 static void __exit fiber_ioctl_exit(void)
 {
-	printk("start exit\n");
     device_destroy(cl, dev);
     class_destroy(cl);
     cdev_del(&c_dev);
     unregister_chrdev_region(dev, MINOR_CNT);
-	printk("end exit\n");
 }
  
 module_init(fiber_ioctl_init);
