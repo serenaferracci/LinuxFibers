@@ -12,7 +12,10 @@
  
 int main(int argc, char *argv[])
 {
-	long fibers = FlsAlloc();
+    long fiber = ConvertThreadToFiber();
+    printf("%ld\n", fiber);
+
+	long fibers = CreateFiber(0, NULL, NULL);
     printf("%ld\n", fibers);
     
     long fibers1 = FlsAlloc();

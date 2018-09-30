@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include "../Module/fiber_ioctl.h"
 #include "function_calls.h"
@@ -32,11 +33,11 @@ int ConvertThreadToFiber()
 
 int CreateFiber(unsigned long dwStackSize, void* lpStartAddress,void* lpParameter)
 {
-	create_arg_t args;
+	create_arg_t* args = (create_arg_t*) malloc(sizeof(create_arg_t));
 	
-	args.dwStackSize = dwStackSize;
-	args.lpStartAddress = lpStartAddress;
-	args.lpParameter = lpParameter;
+	args->dwStackSize = dwStackSize;
+	args->lpStartAddress = lpStartAddress;
+	args->lpParameter = lpParameter;
 	
 	int fd = open(FILE_NAME, O_RDWR);
     if (fd == -1)
@@ -44,7 +45,7 @@ int CreateFiber(unsigned long dwStackSize, void* lpStartAddress,void* lpParamete
         perror("create fiber open");
         return -1;
     }
-    int ret = ioctl(fd, CREATEFIBER, &args);
+    int ret = ioctl(fd, CREATEFIBER, args);
     if (ret == -1)
     {
         perror("create fiber ioctl get");
@@ -56,7 +57,7 @@ int CreateFiber(unsigned long dwStackSize, void* lpStartAddress,void* lpParamete
     return ret;
 }
 
-int SwitchToFiber(void* lpFiber)
+int SwitchToFiber(int lpFiber)
 {
 	int fd = open(FILE_NAME, O_RDWR);
     if (fd == -1)
@@ -139,10 +140,10 @@ long long FlsGetValue(long dwFlsIndex)
 
 void FlsSetValue(long dwFlsIndex, long long lpFlsData)
 {
-	fls_set_arg_t args;
+	fls_set_arg_t* args = (fls_set_arg_t*)malloc(sizeof(fls_set_arg_t));
 	
-	args.dwFlsIndex = dwFlsIndex;
-	args.lpFlsData = lpFlsData;
+	args->dwFlsIndex = dwFlsIndex;
+	args->lpFlsData = lpFlsData;
 	
 	int fd = open(FILE_NAME, O_RDWR);
     if (fd == -1)

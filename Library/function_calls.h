@@ -10,7 +10,7 @@ int ConvertThreadToFiber();
 
 int CreateFiber(unsigned long dwStackSize, void* lpStartAddress,void* lpParameter);
 
-int SwitchToFiber(void* lpFiber);
+int SwitchToFiber(int lpFiber);
 
 long FlsAlloc();
 

@@ -23,10 +23,14 @@ typedef struct
 	void* param;
 	struct pt_regs* regs;
     struct task_struct* task;
+    struct list_head f_list ;
 	
 } fiber_arg_t;
 
+LIST_HEAD(listStart);
+
 #define MAX_FLS 4096
+#define MAX_FIBER 4096
  
 #define CONVERTTOFIBER       _IO('q', 1)
 #define CREATEFIBER 		 _IO('q', 2)
