@@ -13,6 +13,7 @@
 #include <asm/uaccess.h>
  
 #include "fiber_ioctl.h"
+#include "function_macro.h"
  
 #define FIRST_MINOR 0
 #define MINOR_CNT 1
@@ -29,8 +30,6 @@ static int fiber_id = 0;
 static int fls_id = 0;
 
 static unsigned long fls_array[MAX_FLS];
-
-int converted_thread = 0;
 
  
 static int my_open(struct inode *i, struct file *f)
@@ -65,39 +64,64 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 	if (cmd == CONVERTTOFIBER){
 		//save the context execution of the current thread
 		//assing an id to the fiber
-		//assing an id
 		//return the id
+		int i, exist = 0;
+		pid_t pro_id, thr_id;
 		void* param;
+		process_arg_t* node;
+		process_arg_t* proc = (process_arg_t*) kmalloc(sizeof(process_arg_t), GFP_KERNEL);
 		struct pt_regs *regs = task_pt_regs(current);
-		struct task_struct* current_task = current;
-		fiber_arg_t* new_fiber =(fiber_arg_t*) kmalloc(sizeof(fiber_arg_t), GFP_KERNEL);
-		new_fiber->task = (struct task_struct*) kmalloc(sizeof(struct task_struct), GFP_KERNEL);
-		new_fiber->regs = (struct pt_regs*) kmalloc(sizeof(struct pt_regs), GFP_KERNEL);
-		if(!new_fiber) return -1;
+		fiber_arg_t* fiber = (fiber_arg_t*) kmalloc(sizeof(fiber_arg_t), GFP_KERNEL);
+		thread_arg_t* cursor;
+		thread_arg_t* thread = (thread_arg_t*) kmalloc(sizeof(thread_arg_t), GFP_KERNEL);
 
-		param = (void *)arg;
+		pro_id = current->tgid;
+		thr_id = current->pid;
 
-		new_fiber->param = param;
-		
-		new_fiber->index = __sync_fetch_and_add(&fiber_id, 1);
+		hash_for_each(list_process, i, node , p_list){
+			if(node->pid == pro_id) exist = 1;
+		}
+		if(exist == 0){
+			proc->fiber_id = 0;
+			proc->pid = pro_id;
+			hash_add_rcu(list_process, &proc->p_list, proc->pid);
+			hash_init(proc->threads);
+			hash_init(proc->fibers);
+		}
 
-		memcpy(new_fiber->regs, regs, sizeof(struct pt_regs));
-		memcpy(new_fiber->task, current_task, sizeof(struct task_struct));
+		exist = 0;
 
-		converted_thread = 1;
+		hash_for_each(proc->threads, i, cursor , t_list){
+			if(cursor->pid == thr_id) exist = 1;
+		}
+		if(exist == 0){
+			thread->pid = thr_id;
+			hash_add_rcu(proc->threads, &thread->t_list, thread->pid);
 
-		return new_fiber->index;
+			fiber->regs = (struct pt_regs*) kmalloc(sizeof(struct pt_regs), GFP_KERNEL);
+			if(!fiber) return -1;
+
+			param = (void *)arg;
+
+			fiber->param = param;
+			fiber->index = __sync_fetch_and_add(&proc->fiber_id, 1);
+			memcpy(fiber->regs, regs, sizeof(struct pt_regs));
+
+			return fiber->index;
+		}
+		return -1;
 	}
 	
 	else if (cmd == CREATEFIBER){
 		unsigned long stack_size;
 		size_t reminder;
 		void *stack;
-		int rc;
-
+		int rc, i, exist = 0;
+		pid_t pro_id, thr_id;
 		create_arg_t* args = (create_arg_t*) kmalloc (sizeof(create_arg_t), GFP_KERNEL);
 		fiber_arg_t* new_fiber = (fiber_arg_t*) kmalloc(sizeof(fiber_arg_t), GFP_KERNEL);
-		if(!new_fiber || converted_thread == 0) return -1;
+		process_arg_t* node;
+		thread_arg_t* cursor;
 
 		rc = raw_copy_from_user(args, (void *)arg, sizeof(create_arg_t));
 
@@ -106,30 +130,49 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		//save parameters
 		//assing an id to the fiber
 		//return the id
-		stack_size = args->dwStackSize;
-		if(stack_size == 0) stack_size = STACKSIZE;
 
-		// Align the size
-		reminder = stack_size % ALIGN_SIZE;
-		if (reminder != 0) {
-			stack_size = (stack_size / ALIGN_SIZE + 1) * ALIGN_SIZE;
+		pro_id = current->tgid;
+		thr_id = current->pid;
+
+		//check if the current process is presente in the hashtable
+		hash_for_each(list_process, i, node , p_list){
+			if(node->pid == pro_id) exist = 1;
+		}
+		if(exist == 0){
+			return -1;
 		}
 
-		stack = (void *) kzalloc(stack_size, GFP_KERNEL);
-		
-		//new_fiber->param = args->lpParameter;
-		new_fiber->index = __sync_fetch_and_add(&fiber_id, 1);
-		new_fiber->regs = (struct pt_regs*)kzalloc(sizeof(struct pt_regs), GFP_KERNEL);
+		exist = 0;
 
-		new_fiber->regs->sp = (unsigned long)stack + stack_size - 8;
-		new_fiber->regs->ip = (unsigned long)args->lpStartAddress;
-		new_fiber->regs->di = (unsigned long)args->lpParameter;
-		new_fiber->regs->bp = new_fiber->regs->sp;
+		//check if the current thread is present in the hastable, 
+		//if it is we know that the thread has already compute ConverteToThread
+		hash_for_each(node->threads, i, cursor , t_list){
+			if(cursor->pid == thr_id) exist = 1;
+		}
+		if(exist == 1){
+			stack_size = args->dwStackSize;
+			if(stack_size == 0) stack_size = STACKSIZE;
 
-		INIT_LIST_HEAD(&new_fiber->f_list);
-  		list_add(&(new_fiber->f_list),&listStart);
+			// Align the size
+			reminder = stack_size % ALIGN_SIZE;
+			if (reminder != 0) {
+				stack_size = (stack_size / ALIGN_SIZE + 1) * ALIGN_SIZE;
+			}
 
-		return new_fiber->index;
+			stack = (void *) kzalloc(stack_size, GFP_KERNEL);
+			
+			//new_fiber->param = args->lpParameter;
+			new_fiber->index = __sync_fetch_and_add(&node->fiber_id, 1);
+			new_fiber->regs = (struct pt_regs*)kzalloc(sizeof(struct pt_regs), GFP_KERNEL);
+
+			new_fiber->regs->sp = (unsigned long)stack + stack_size - 8;
+			new_fiber->regs->ip = (unsigned long)args->lpStartAddress;
+			new_fiber->regs->di = (unsigned long)args->lpParameter;
+			new_fiber->regs->bp = new_fiber->regs->sp;
+
+			return new_fiber->index;
+		}
+		return -1;
 	}
 	
 	else if (cmd == SWITCHTOFIBER){
@@ -138,19 +181,8 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		//use an hashmap to easy retrive the fiber given the address
 		//does not return
 
-		struct list_head* current_node;
- 		fiber_arg_t* currFiber;
-		fiber_arg_t* searchedFiber = NULL;
-
 		int ind = (int)arg;
 		if(ind >= fiber_id) return -1;
-		
-		list_for_each(current_node, &listStart){
-			currFiber = list_entry(current_node,fiber_arg_t,f_list);
-			if(currFiber->index == ind) searchedFiber = currFiber;
-		}
-
-		if(searchedFiber == NULL) return -1;
 
 		return 0;
 	}
@@ -241,6 +273,8 @@ static int __init fiber_ioctl_init(void)
         unregister_chrdev_region(dev, MINOR_CNT);
         return PTR_ERR(dev_ret);
     }
+
+	hash_init(list_process);
  
     return 0;
 }

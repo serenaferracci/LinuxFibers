@@ -845,6 +845,8 @@ deps_/home/serenaferracci/Desktop/project_aosv/aosv/Module/fiber_ioctl.o := \
   arch/x86/include/asm/extable.h \
   arch/x86/include/asm/uaccess_64.h \
   /home/serenaferracci/Desktop/project_aosv/aosv/Module/fiber_ioctl.h \
+  include/linux/hashtable.h \
+  /home/serenaferracci/Desktop/project_aosv/aosv/Module/function_macro.h \
 
 /home/serenaferracci/Desktop/project_aosv/aosv/Module/fiber_ioctl.o: $(deps_/home/serenaferracci/Desktop/project_aosv/aosv/Module/fiber_ioctl.o)
 

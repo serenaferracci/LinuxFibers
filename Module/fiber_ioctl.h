@@ -1,20 +1,7 @@
 #ifndef FIBER_IOCTL_H
 #define FIBER_IOCTL_H
-#include <linux/ioctl.h>
 
-typedef struct
-{
-    unsigned long dwStackSize;
-    void* lpStartAddress;
-    void* lpParameter;
-} create_arg_t;
-
-typedef struct
-{
-    long dwFlsIndex;
-    long long lpFlsData;
-} fls_set_arg_t;
-
+#include <linux/hashtable.h>
 
 typedef struct
 {
@@ -22,26 +9,31 @@ typedef struct
 	int index;
 	void* param;
 	struct pt_regs* regs;
-    struct task_struct* task;
-    struct list_head f_list ;
+    struct hlist_node f_list;
 	
 } fiber_arg_t;
 
-LIST_HEAD(listStart);
+typedef struct
+{
+	pid_t pid;
+	fiber_arg_t* active_fiber;
+    struct hlist_node t_list;
+	
+} thread_arg_t;
 
-#define DEFINE_SPINLOCK(x) spinlock_t x = __SPIN_LOCK_UNLOCKED(x)
+typedef struct
+{
+    pid_t pid;
+    struct hlist_node p_list;
+    DECLARE_HASHTABLE(fibers, 10);
+    DECLARE_HASHTABLE(threads, 10);
+    long fiber_id;
+} process_arg_t;
 
+DECLARE_HASHTABLE(list_process, 10);
 DEFINE_SPINLOCK(lock_fls);
 
 #define MAX_FLS 4096
 #define MAX_FIBER 4096
- 
-#define CONVERTTOFIBER       _IO('q', 1)
-#define CREATEFIBER 		 _IO('q', 2)
-#define SWITCHTOFIBER 		 _IO('q', 3)
-#define FLSALLOC 			 _IO('q', 4)
-#define FLSFREE				 _IO('q', 5)
-#define FLSGETVALUE			 _IO('q', 6)
-#define FLSSETVALUE			 _IO('q', 7)
  
 #endif

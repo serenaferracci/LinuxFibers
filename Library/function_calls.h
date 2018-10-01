@@ -2,7 +2,7 @@
 #define __FUNCTION_CALLS 
 
 #include <stdbool.h>
-#include "../Module/fiber_ioctl.h"
+#include "../Module/function_macro.h"
 
 #define FILE_NAME  "/dev/fiber"
  
