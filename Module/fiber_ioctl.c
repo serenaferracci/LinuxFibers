@@ -192,14 +192,17 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 
 		int i, pro_id, ind = (int)arg;
 		int exist = 0;
-		process_arg_t* node;
-		thread_arg_t* cursor;
+		process_arg_t* node, *proc;
+		thread_arg_t* cursor, *thre;
 
 		pro_id = current->tgid;
 
 		//check if the current process is presente in the hashtable
 		hash_for_each(list_process, i, node , p_list){
-			if(node->pid == pro_id) exist = 1;
+			if(node->pid == pro_id){
+				exist = 1;
+				proc = node;
+			}
 		}
 		if(exist == 0){
 			return -1;
@@ -209,10 +212,14 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 
 		//check if the current thread is present in the hastable, 
 		//if it is we know that the thread has already compute ConverteToThread
-		hash_for_each(node->threads, i, cursor , t_list){
-			if(cursor->pid == ind) exist = 1;
+		hash_for_each(proc->threads, i, cursor , t_list){
+			if(cursor->pid == ind){
+				exist = 1;
+				thre = cursor;
+			}
 		}
 		if(exist == 1){
+			//swicth the context to the found fiber
 		}
 
 
