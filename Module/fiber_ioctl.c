@@ -26,7 +26,6 @@ static struct cdev c_dev;
 static struct class *cl;
 static int Device_Open = 0;
 
-static int fiber_id = 0;
 static int fls_id = 0;
 
 static unsigned long fls_array[MAX_FLS];
@@ -79,7 +78,10 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		thr_id = current->pid;
 
 		hash_for_each(list_process, i, node , p_list){
-			if(node->pid == pro_id) exist = 1;
+			if(node->pid == pro_id) {
+				exist = 1;
+				proc = node;
+			}
 		}
 		if(exist == 0){
 			proc->fiber_id = 0;
@@ -120,8 +122,8 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		pid_t pro_id, thr_id;
 		create_arg_t* args = (create_arg_t*) kmalloc (sizeof(create_arg_t), GFP_KERNEL);
 		fiber_arg_t* new_fiber = (fiber_arg_t*) kmalloc(sizeof(fiber_arg_t), GFP_KERNEL);
-		process_arg_t* node;
-		thread_arg_t* cursor;
+		process_arg_t* node, *proc;
+		thread_arg_t* cursor, *thr;
 
 		rc = raw_copy_from_user(args, (void *)arg, sizeof(create_arg_t));
 
@@ -136,19 +138,28 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 
 		//check if the current process is presente in the hashtable
 		hash_for_each(list_process, i, node , p_list){
-			if(node->pid == pro_id) exist = 1;
+			if(node->pid == pro_id) {
+				exist = 1;
+				proc = node;
+			}
 		}
 		if(exist == 0){
 			return -1;
 		}
 
 		exist = 0;
-
 		//check if the current thread is present in the hastable, 
 		//if it is we know that the thread has already compute ConverteToThread
-		hash_for_each(node->threads, i, cursor , t_list){
-			if(cursor->pid == thr_id) exist = 1;
+		hash_for_each(proc->threads, i, cursor , t_list){
+			if(cursor->pid == thr_id) {
+				exist = 1;
+				thr = cursor;
+			}
 		}
+
+		//in questo modo un thread può creare molti fibers
+		//exist == 0 non può creare fibers
+		//togliere l'inserimento nel convert?
 		if(exist == 1){
 			stack_size = args->dwStackSize;
 			if(stack_size == 0) stack_size = STACKSIZE;
@@ -160,16 +171,14 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			}
 
 			stack = (void *) kzalloc(stack_size, GFP_KERNEL);
-			
 			//new_fiber->param = args->lpParameter;
-			new_fiber->index = __sync_fetch_and_add(&node->fiber_id, 1);
+			new_fiber->index = __sync_fetch_and_add(&proc->fiber_id, 1);
 			new_fiber->regs = (struct pt_regs*)kzalloc(sizeof(struct pt_regs), GFP_KERNEL);
 
 			new_fiber->regs->sp = (unsigned long)stack + stack_size - 8;
 			new_fiber->regs->ip = (unsigned long)args->lpStartAddress;
 			new_fiber->regs->di = (unsigned long)args->lpParameter;
 			new_fiber->regs->bp = new_fiber->regs->sp;
-
 			return new_fiber->index;
 		}
 		return -1;
@@ -181,10 +190,33 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		//use an hashmap to easy retrive the fiber given the address
 		//does not return
 
-		int ind = (int)arg;
-		if(ind >= fiber_id) return -1;
+		int i, pro_id, ind = (int)arg;
+		int exist = 0;
+		process_arg_t* node;
+		thread_arg_t* cursor;
 
-		return 0;
+		pro_id = current->tgid;
+
+		//check if the current process is presente in the hashtable
+		hash_for_each(list_process, i, node , p_list){
+			if(node->pid == pro_id) exist = 1;
+		}
+		if(exist == 0){
+			return -1;
+		}
+
+		exist = 0;
+
+		//check if the current thread is present in the hastable, 
+		//if it is we know that the thread has already compute ConverteToThread
+		hash_for_each(node->threads, i, cursor , t_list){
+			if(cursor->pid == ind) exist = 1;
+		}
+		if(exist == 1){
+		}
+
+
+		return -1;
 	}
 	
 	else if (cmd == FLSALLOC){

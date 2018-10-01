@@ -17,6 +17,9 @@ int main(int argc, char *argv[])
 
 	long fibers = CreateFiber(0, NULL, NULL);
     printf("%ld\n", fibers);
+
+    long fibers2 = CreateFiber(0, NULL, NULL);
+    printf("%ld\n", fibers2);
     
     long fibers1 = FlsAlloc();
     printf("%ld\n", fibers1);
