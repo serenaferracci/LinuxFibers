@@ -838,12 +838,41 @@ deps_/home/serenaferracci/Desktop/project_aosv/aosv/Module/fiber_ioctl.o := \
   include/linux/sched/task_stack.h \
     $(wildcard include/config/stack/growsup.h) \
   include/uapi/linux/magic.h \
+  include/linux/uaccess.h \
   arch/x86/include/asm/uaccess.h \
     $(wildcard include/config/x86/intel/usercopy.h) \
   arch/x86/include/asm/smap.h \
     $(wildcard include/config/x86/smap.h) \
   arch/x86/include/asm/extable.h \
   arch/x86/include/asm/uaccess_64.h \
+  arch/x86/include/asm/fpu/internal.h \
+    $(wildcard include/config/x86/debug/fpu.h) \
+    $(wildcard include/config/as/fxsaveq.h) \
+  include/linux/compat.h \
+    $(wildcard include/config/compat/old/sigaction.h) \
+    $(wildcard include/config/odd/rt/sigaction.h) \
+  include/linux/socket.h \
+  arch/x86/include/uapi/asm/socket.h \
+  include/uapi/asm-generic/socket.h \
+  arch/x86/include/uapi/asm/sockios.h \
+  include/uapi/asm-generic/sockios.h \
+  include/uapi/linux/sockios.h \
+  include/linux/uio.h \
+  include/uapi/linux/uio.h \
+  include/uapi/linux/socket.h \
+  include/uapi/linux/if.h \
+  include/uapi/linux/libc-compat.h \
+  include/uapi/linux/hdlc/ioctl.h \
+  include/uapi/linux/aio_abi.h \
+  arch/x86/include/asm/compat.h \
+  arch/x86/include/asm/user32.h \
+  arch/x86/include/asm/fpu/api.h \
+  arch/x86/include/asm/fpu/xstate.h \
+  arch/x86/include/asm/trace/fpu.h \
+  include/linux/tracepoint.h \
+    $(wildcard include/config/have/syscall/tracepoints.h) \
+    $(wildcard include/config/tracepoint.h) \
+  include/trace/define_trace.h \
   /home/serenaferracci/Desktop/project_aosv/aosv/Module/fiber_ioctl.h \
   include/linux/hashtable.h \
   /home/serenaferracci/Desktop/project_aosv/aosv/Module/function_macro.h \

@@ -23,5 +23,8 @@ int main(int argc, char *argv[])
     
     long fibers1 = FlsAlloc();
     printf("%ld\n", fibers1);
+
+    long fibers3 = FlsAlloc();
+    printf("%ld\n", fibers3);
     return 0;
 }

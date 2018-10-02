@@ -5,7 +5,7 @@
 
 typedef struct
 {
-    unsigned long dwStackSize;
+    unsigned long dwStackPointer;
     void* lpStartAddress;
     void* lpParameter;
 } create_arg_t;

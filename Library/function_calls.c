@@ -34,8 +34,12 @@ int ConvertThreadToFiber()
 int CreateFiber(unsigned long dwStackSize, void* lpStartAddress,void* lpParameter)
 {
 	create_arg_t* args = (create_arg_t*) malloc(sizeof(create_arg_t));
-	
-	args->dwStackSize = dwStackSize;
+	void* stack;
+    void* stack_pointer;
+    posix_memalign(&stack, 16, dwStackSize);
+    stack_pointer = (void *)((unsigned long)stack + dwStackSize - 8);
+    //posix mem align a 16 bytes e crea void* della stack e passa stack pointer 
+	args->dwStackPointer = stack_pointer;
 	args->lpStartAddress = lpStartAddress;
 	args->lpParameter = lpParameter;
 	
