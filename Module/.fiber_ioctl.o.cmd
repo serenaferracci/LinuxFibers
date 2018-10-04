@@ -873,6 +873,109 @@ deps_/home/serenaferracci/Desktop/project_aosv/aosv/Module/fiber_ioctl.o := \
     $(wildcard include/config/have/syscall/tracepoints.h) \
     $(wildcard include/config/tracepoint.h) \
   include/trace/define_trace.h \
+  include/linux/kprobes.h \
+    $(wildcard include/config/kprobes.h) \
+    $(wildcard include/config/kretprobes.h) \
+    $(wildcard include/config/kprobes/sanity/test.h) \
+    $(wildcard include/config/optprobes.h) \
+    $(wildcard include/config/kprobes/on/ftrace.h) \
+  include/linux/ftrace.h \
+    $(wildcard include/config/function/tracer.h) \
+    $(wildcard include/config/dynamic/ftrace.h) \
+    $(wildcard include/config/dynamic/ftrace/with/regs.h) \
+    $(wildcard include/config/stack/tracer.h) \
+    $(wildcard include/config/preemptirq/events.h) \
+    $(wildcard include/config/function/profiler.h) \
+    $(wildcard include/config/ftrace/syscalls.h) \
+  include/linux/trace_clock.h \
+  arch/x86/include/asm/trace_clock.h \
+  include/linux/kallsyms.h \
+    $(wildcard include/config/kallsyms/all.h) \
+  include/linux/mm.h \
+    $(wildcard include/config/have/arch/mmap/rnd/bits.h) \
+    $(wildcard include/config/have/arch/mmap/rnd/compat/bits.h) \
+    $(wildcard include/config/arch/uses/high/vma/flags.h) \
+    $(wildcard include/config/ppc.h) \
+    $(wildcard include/config/parisc.h) \
+    $(wildcard include/config/metag.h) \
+    $(wildcard include/config/device/private.h) \
+    $(wildcard include/config/device/public.h) \
+    $(wildcard include/config/shmem.h) \
+    $(wildcard include/config/have/memblock.h) \
+    $(wildcard include/config/debug/vm/rb.h) \
+    $(wildcard include/config/page/poisoning.h) \
+    $(wildcard include/config/debug/pagealloc.h) \
+    $(wildcard include/config/hibernation.h) \
+    $(wildcard include/config/hugetlbfs.h) \
+  include/linux/percpu-refcount.h \
+  include/linux/page_ext.h \
+    $(wildcard include/config/idle/page/tracking.h) \
+  include/linux/stacktrace.h \
+    $(wildcard include/config/stacktrace.h) \
+    $(wildcard include/config/user/stacktrace/support.h) \
+  include/linux/stackdepot.h \
+  include/linux/page_ref.h \
+    $(wildcard include/config/debug/page/ref.h) \
+  include/linux/page-flags.h \
+    $(wildcard include/config/arch/uses/pg/uncached.h) \
+    $(wildcard include/config/memory/failure.h) \
+    $(wildcard include/config/swap.h) \
+    $(wildcard include/config/thp/swap.h) \
+    $(wildcard include/config/ksm.h) \
+  include/linux/memremap.h \
+  arch/x86/include/asm/pgtable.h \
+    $(wildcard include/config/debug/wx.h) \
+    $(wildcard include/config/have/arch/transparent/hugepage/pud.h) \
+    $(wildcard include/config/have/arch/soft/dirty.h) \
+    $(wildcard include/config/arch/enable/thp/migration.h) \
+  arch/x86/include/asm/pgtable_64.h \
+  include/asm-generic/pgtable.h \
+    $(wildcard include/config/have/arch/huge/vmap.h) \
+    $(wildcard include/config/x86/espfix64.h) \
+  include/linux/huge_mm.h \
+  include/linux/sched/coredump.h \
+    $(wildcard include/config/core/dump/default/elf/headers.h) \
+  include/linux/vmstat.h \
+    $(wildcard include/config/vm/event/counters.h) \
+    $(wildcard include/config/debug/tlbflush.h) \
+    $(wildcard include/config/debug/vm/vmacache.h) \
+  include/linux/vm_event_item.h \
+    $(wildcard include/config/memory/balloon.h) \
+    $(wildcard include/config/balloon/compaction.h) \
+  arch/x86/include/asm/sections.h \
+  include/asm-generic/sections.h \
+  include/linux/ptrace.h \
+  include/linux/sched/signal.h \
+    $(wildcard include/config/sched/autogroup.h) \
+    $(wildcard include/config/bsd/process/acct.h) \
+    $(wildcard include/config/taskstats.h) \
+    $(wildcard include/config/audit.h) \
+  include/linux/signal.h \
+  include/linux/sched/jobctl.h \
+  include/linux/cred.h \
+    $(wildcard include/config/debug/credentials.h) \
+    $(wildcard include/config/keys.h) \
+  include/linux/key.h \
+  include/linux/assoc_array.h \
+    $(wildcard include/config/associative/array.h) \
+  include/linux/selinux.h \
+    $(wildcard include/config/security/selinux.h) \
+  include/linux/sched/user.h \
+    $(wildcard include/config/fanotify.h) \
+    $(wildcard include/config/posix/mqueue.h) \
+    $(wildcard include/config/bpf/syscall.h) \
+    $(wildcard include/config/net.h) \
+  include/linux/pid_namespace.h \
+    $(wildcard include/config/pid/ns.h) \
+  include/linux/nsproxy.h \
+  include/linux/ns_common.h \
+  include/uapi/linux/ptrace.h \
+  arch/x86/include/asm/ftrace.h \
+  arch/x86/include/asm/kprobes.h \
+  include/asm-generic/kprobes.h \
+  arch/x86/include/asm/insn.h \
+  arch/x86/include/asm/inat.h \
+  arch/x86/include/asm/inat_types.h \
   /home/serenaferracci/Desktop/project_aosv/aosv/Module/fiber_ioctl.h \
   include/linux/hashtable.h \
   /home/serenaferracci/Desktop/project_aosv/aosv/Module/function_macro.h \

@@ -23,8 +23,8 @@
 
 int main(int argc, char *argv[])
 {
-    /*void* fiber = ConvertThreadToFiber();
-    printf("%ld\n", (unsigned long)fiber);*/
+    void* fiber = ConvertThreadToFiber();
+    printf("%ld\n", (unsigned long)fiber);
 
 	void* fibers = CreateFiber(8*2048, hello1, NULL);
     printf("%ld\n", (unsigned long)fibers);

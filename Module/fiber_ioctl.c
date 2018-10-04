@@ -12,6 +12,7 @@
 #include <linux/types.h>
 #include <linux/uaccess.h>
 #include <asm/fpu/internal.h>
+#include <linux/kprobes.h>
  
 #include "fiber_ioctl.h"
 #include "function_macro.h"
@@ -25,6 +26,7 @@
 static dev_t dev;
 static struct cdev c_dev;
 static struct class *cl;
+static struct kprobe probe;
  
 static int my_open(struct inode *i, struct file *f){
 	return 0;
@@ -73,6 +75,26 @@ fiber_arg_t* search_fiber(int index, process_arg_t* process){
 	return NULL;
 }
 
+
+int Pre_Handler(struct kprobe *p, struct pt_regs *regs){ 
+	printk("Pre Hendler kprob thread id: %d\n", current->pid);
+	thread_arg_t* thread;
+	process_arg_t* process;
+	pid_t pro_id, thr_id;
+	pro_id = current->tgid;
+	thr_id = current->pid;
+
+	process = search_process(pro_id);
+	if(process == NULL) return 0;
+
+	thread = search_thread(thr_id, process);
+	if(thread == NULL) return 0; 
+	printk("Thread is present in the hashmap");
+	return 0;
+} 
+ 
+void Post_Handler(struct kprobe *p, struct pt_regs *regs, unsigned long flags){ 
+} 
 
 
 static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
@@ -346,6 +368,11 @@ static int __init fiber_ioctl_init(void)
         return PTR_ERR(dev_ret);
     }
 	hash_init(list_process);
+
+    probe.pre_handler = Pre_Handler; 
+    probe.post_handler = Post_Handler; 
+    probe.addr = (kprobe_opcode_t *)do_exit; 
+    register_kprobe(&probe); 
     return 0;
 }
  
@@ -355,6 +382,7 @@ static void __exit fiber_ioctl_exit(void)
     class_destroy(cl);
     cdev_del(&c_dev);
     unregister_chrdev_region(dev, MINOR_CNT);
+	unregister_kprobe(&probe);
 }
  
 module_init(fiber_ioctl_init);
