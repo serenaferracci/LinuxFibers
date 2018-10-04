@@ -5,7 +5,7 @@
 
 typedef struct
 {
-    unsigned long dwStackPointer;
+    void* dwStackPointer;
     void* lpStartAddress;
     void* lpParameter;
 } create_arg_t;
@@ -13,7 +13,7 @@ typedef struct
 typedef struct
 {
     long dwFlsIndex;
-    long long lpFlsData;
+    unsigned long lpFlsData;
 } fls_set_arg_t;
  
 #define CONVERTTOFIBER       _IO('q', 1)

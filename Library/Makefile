@@ -1,6 +1,6 @@
 CC=gcc
-CFLAGS=-I.
-DEPS = function_calls.h
+CFLAGS=-I. -g
+DEPS = function_calls.h 
 OBJ = fiber_app.o function_calls.o
 
 %.o: %.c $(DEPS)
@@ -10,3 +10,6 @@ fiber_app: $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS)
 	
 default: fiber_app
+
+clean: 
+	rm -rfv fiber_app *.o

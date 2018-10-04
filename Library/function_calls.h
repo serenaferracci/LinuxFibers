@@ -6,17 +6,17 @@
 
 #define FILE_NAME  "/dev/fiber"
  
-int ConvertThreadToFiber();
+void* ConvertThreadToFiber();
 
-int CreateFiber(unsigned long dwStackSize, void* lpStartAddress,void* lpParameter);
+void* CreateFiber(unsigned long dwStackSize, void* lpStartAddress,void* lpParameter);
 
-int SwitchToFiber(int lpFiber);
+void SwitchToFiber(void* lpFiber);
 
 long FlsAlloc();
 
 bool FlsFree(long dwFlsIndex);
 
-long long FlsGetValue(long dwFlsIndex);
+unsigned long FlsGetValue(long dwFlsIndex);
 
 void FlsSetValue(long dwFlsIndex, long long lpFlsData);
 

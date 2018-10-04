@@ -2,20 +2,21 @@
 #define FIBER_IOCTL_H
 
 #include <linux/hashtable.h>
+#include <linux/bitmap.h>
 
 #define MAX_FLS 4096
-#define MAX_FIBER 4096
 
 typedef struct
 {
 	bool running;
-	int index;
+	unsigned long index;
 	struct pt_regs* regs;
     struct hlist_node f_list;
     long fls_in;
+    DECLARE_BITMAP(set_bitmap, sizeof(MAX_FLS));
+    DECLARE_BITMAP(fls_bitmap, sizeof(MAX_FLS));
     long long fls_array[MAX_FLS];
     struct fpu* fpu_reg;
-	
 } fiber_arg_t;
 
 typedef struct
@@ -36,6 +37,5 @@ typedef struct
 } process_arg_t;
 
 DECLARE_HASHTABLE(list_process, 10);
-DEFINE_SPINLOCK(lock_fls);
  
 #endif

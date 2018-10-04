@@ -6,141 +6,98 @@
 #include <sys/ioctl.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include "../Module/function_macro.h"
 #include "function_calls.h"
 
- 
-int ConvertThreadToFiber()
-{	
-	int fd = open(FILE_NAME, O_RDWR);
+int fd;
+int done = 0;
+void init_file(){
+    fd = open(FILE_NAME, O_RDWR);
     if (fd == -1)
     {
         perror("convert to fiber open");
-        return -1;
+        return;
     }
-    int ret = ioctl(fd, CONVERTTOFIBER);
-    if (ret == -1)
-    {
-        perror("convert to fiber ioctl get");
-        close (fd);
-        return -1;
-    }
-    
-    close (fd);
-    return ret;
+    done = 1;
 }
 
-int CreateFiber(unsigned long dwStackSize, void* lpStartAddress,void* lpParameter)
+
+ 
+void* ConvertThreadToFiber()
+{	
+	if (done == 0) init_file();
+    unsigned long ret = (unsigned long)ioctl(fd, CONVERTTOFIBER);
+    if ((unsigned long)ret == (unsigned long)-1){
+        perror("convert to fiber ioctl get");
+        return (void*)-1;
+    }
+    return (void *)ret;
+}
+
+void* CreateFiber(unsigned long dwStackSize, void* lpStartAddress,void* lpParameter)
 {
 	create_arg_t* args = (create_arg_t*) malloc(sizeof(create_arg_t));
 	void* stack;
     void* stack_pointer;
     posix_memalign(&stack, 16, dwStackSize);
     stack_pointer = (void *)((unsigned long)stack + dwStackSize - 8);
-    //posix mem align a 16 bytes e crea void* della stack e passa stack pointer 
 	args->dwStackPointer = stack_pointer;
 	args->lpStartAddress = lpStartAddress;
 	args->lpParameter = lpParameter;
 	
-	int fd = open(FILE_NAME, O_RDWR);
-    if (fd == -1)
-    {
-        perror("create fiber open");
-        return -1;
-    }
-    int ret = ioctl(fd, CREATEFIBER, args);
-    if (ret == -1)
-    {
+	if (done == 0) init_file();
+    unsigned long ret = (unsigned long)ioctl(fd, CREATEFIBER, args);
+    if ((unsigned long)ret == (unsigned long)-1){
         perror("create fiber ioctl get");
-        close (fd);
-        return -1;
+        return (void *)-1;
     }
-    
-    close (fd);
-    return ret;
+    return (void *)ret;
 }
 
-int SwitchToFiber(int lpFiber)
+void SwitchToFiber(void* lpFiber)
 {
-	int fd = open(FILE_NAME, O_RDWR);
-    if (fd == -1)
-    {
-        perror("switch fiber open");
-        return -1;
-    }
-
-    if (ioctl(fd, SWITCHTOFIBER, &lpFiber) == -1)
+	if (done == 0) init_file();
+    if (ioctl(fd, SWITCHTOFIBER, (unsigned long) lpFiber) == -1)
     {
         perror("switch fiber ioctl get");
-        close (fd);
-        return -1;
     }
-    
-    close (fd);
-    return 1;
+    return;
 }
 
 long FlsAlloc()
 {
-	int fd = open(FILE_NAME, O_RDWR);
-    if (fd == -1)
-    {
-        perror("alloc fiber open");
-        return -1;
-    }
+	if (done == 0) init_file();
     long ret = ioctl(fd, FLSALLOC);
-    if (ret == -1)
-    {
+    if (ret == -1){
         perror("alloc fiber ioctl get");
-        close (fd);
         return -1;
     }
-    
-    close (fd);
     return ret;
 }
 
 bool FlsFree(long dwFlsIndex)
 {
-	int fd = open(FILE_NAME, O_RDWR);
-    if (fd == -1)
-    {
-        perror("free fiber open");
-        return false;
-    }
+	if (done == 0) init_file();
 
-    if (ioctl(fd, FLSFREE) == -1)
-    {
+    if (ioctl(fd, FLSFREE, dwFlsIndex) == -1){
         perror("free fiber ioctl get");
-        close (fd);
         return false;
     }
-    
-    close (fd);
     return true;
 }
 
 
-long long FlsGetValue(long dwFlsIndex)
+unsigned long FlsGetValue(long dwFlsIndex)
 {
-	int fd = open(FILE_NAME, O_RDWR);
-    if (fd == -1)
-    {
-        perror("get fiber open");
+	if (done == 0) init_file();
+
+    long long ret = ioctl(fd, FLSGETVALUE, dwFlsIndex);
+    if (ret == -1){
+        perror("get fiber ioctl get");  
         return -1;
     }
-
-    long long ret = ioctl(fd, FLSALLOC, &dwFlsIndex);
-
-    if (ret == -1)
-    {
-        perror("get fiber ioctl get");
-        close (fd);
-        return -1;
-    }
-    
-    close (fd);
     return ret;
 }
 
@@ -151,18 +108,10 @@ void FlsSetValue(long dwFlsIndex, long long lpFlsData)
 	args->dwFlsIndex = dwFlsIndex;
 	args->lpFlsData = lpFlsData;
 	
-	int fd = open(FILE_NAME, O_RDWR);
-    if (fd == -1)
-    {
-        perror("set fiber open");
-        return;
-    }
+	if (done == 0) init_file();
 
-    if (ioctl(fd, FLSALLOC, &args) == -1)
-    {
+    if (ioctl(fd, FLSSETVALUE, args) == -1){
         perror("set fiber ioctl get");
     }
-    
-    close (fd);
     return;
 }
