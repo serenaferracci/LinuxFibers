@@ -77,19 +77,26 @@ fiber_arg_t* search_fiber(int index, process_arg_t* process){
 
 
 int Pre_Handler(struct kprobe *p, struct pt_regs *regs){ 
-	printk("Pre Hendler kprob thread id: %d\n", current->pid);
 	thread_arg_t* thread;
 	process_arg_t* process;
+	fiber_arg_t* fiber;
 	pid_t pro_id, thr_id;
 	pro_id = current->tgid;
 	thr_id = current->pid;
-
+	printk("Pre Hendler kprob thread id: %d\n", current->pid);
 	process = search_process(pro_id);
 	if(process == NULL) return 0;
 
 	thread = search_thread(thr_id, process);
 	if(thread == NULL) return 0; 
 	printk("Thread is present in the hashmap");
+	fiber = thread->active_fiber;
+	hash_del(&(thread->t_list));
+	hash_del(&(fiber->f_list));
+	kfree(fiber->fpu_reg);
+	kfree(fiber->regs);
+	kfree(thread);
+	kfree(fiber);
 	return 0;
 } 
  
@@ -160,21 +167,43 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 
 		thread = search_thread(thr_id, process);
 		if(thread != NULL){
+			struct pt_regs* reg = task_pt_regs(current);
 			fiber->running = false;
 			fiber->index = __sync_fetch_and_add(&process->fiber_id, 1);
 			
 			fiber->regs = (struct pt_regs*)kmalloc(sizeof(struct pt_regs), GFP_KERNEL);
 			memcpy(fiber->regs, task_pt_regs(current), sizeof(struct pt_regs));
+			fiber->fpu_reg = (struct fpu *) kmalloc (sizeof(struct fpu), GFP_KERNEL);
 
+			preempt_disable();
+			fiber->regs->r15 = reg->r15;
+			fiber->regs->r14 = reg->r14;
+			fiber->regs->r13 = reg->r13;
+			fiber->regs->r12 = reg->r12;
+			fiber->regs->r11 = reg->r11;
+			fiber->regs->r10 = reg->r10;
+			fiber->regs->r9 = reg->r9;
+			fiber->regs->r8 = reg->r8;
+			fiber->regs->ax = reg->ax;
+			fiber->regs->bx = reg->bx;
+			fiber->regs->cx = reg->cx;
+			fiber->regs->dx = reg->dx;
+			fiber->regs->si = reg->si;
 			fiber->regs->sp = (unsigned long)args->dwStackPointer;
 			fiber->regs->ip = (unsigned long)args->lpStartAddress;
 			fiber->regs->di = (unsigned long)args->lpParameter;
 			fiber->regs->bp = fiber->regs->sp;
+			fiber->regs->flags = reg->flags;
+			copy_fxregs_to_kernel(thread->active_fiber->fpu_reg);
+			preempt_enable();
+
 			hash_add_rcu(process->fibers, &fiber->f_list, fiber->index);
 			fiber->fpu_reg = (struct fpu *) kmalloc (sizeof(struct fpu), GFP_KERNEL); 
 			copy_fxregs_to_kernel(fiber->fpu_reg);
+			kfree(args);
 			return fiber->index;
 		}
+		kfree(args);
 		return -1;
 	}
 	
@@ -333,8 +362,8 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 				fiber->fls_array[index] = args->lpFlsData;
 			}
 		}
+		kfree(args);
 	}
-
     return 0;
 }
  
