@@ -37,5 +37,6 @@ typedef struct
 } process_arg_t;
 
 DECLARE_HASHTABLE(list_process, 10);
+DEFINE_SPINLOCK(lock_fiber);
  
 #endif
