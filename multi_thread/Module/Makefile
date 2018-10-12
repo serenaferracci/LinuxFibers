@@ -18,6 +18,7 @@ clean:
 # kernel build system and can use its language.
 else
  
-	obj-m := fiber_ioctl.o
+	obj-m := fiber.o
+	fiber-objs := fiber_ioctl.o proc.o
  
 endif

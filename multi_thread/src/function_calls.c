@@ -101,7 +101,7 @@ void* FlsGetValue(long dwFlsIndex)
 {   
 	if (done == 0) init_file();
 
-    fls_set_arg_t* args = (fls_set_arg_t*)malloc(sizeof(fls_set_arg_t));
+    fls_arg_t* args = (fls_arg_t*)malloc(sizeof(fls_arg_t));
     args->dwFlsIndex = dwFlsIndex;
     int ret = ioctl(fd, FLSGETVALUE, args);
     if (ret == -1){
@@ -114,7 +114,7 @@ void* FlsGetValue(long dwFlsIndex)
 
 void FlsSetValue(long dwFlsIndex, void* lpFlsData)
 {   
-	fls_set_arg_t* args = (fls_set_arg_t*)malloc(sizeof(fls_set_arg_t));
+	fls_arg_t* args = (fls_arg_t*)malloc(sizeof(fls_arg_t));
 	
 	args->dwFlsIndex = dwFlsIndex;
 	args->lpFlsData = (unsigned long)lpFlsData;

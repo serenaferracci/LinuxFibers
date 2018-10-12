@@ -28,6 +28,7 @@ static struct cdev c_dev;
 static struct class *cl;
 static struct kprobe probe;
 
+
 process_arg_t* search_process(pid_t proc_id){
 	process_arg_t* process;
 	hash_for_each_possible(list_process, process, p_list, proc_id){
@@ -359,6 +360,7 @@ static int __init fiber_ioctl_init(void)
 	proc_lookup = (void*)kallsyms_lookup_name("proc_pident_lookup");
     //probe.addr = (kprobe_opcode_t *)proc_readdir;
     register_kprobe(&probe); 
+	fh_init();
     return 0;
 }
  
@@ -369,7 +371,7 @@ static void __exit fiber_ioctl_exit(void)
     cdev_del(&c_dev);
     unregister_chrdev_region(dev, MINOR_CNT);
 	unregister_kprobe(&probe);
-	unregister_kprobe(&probe_proc);
+	fh_exit();
 }
  
 module_init(fiber_ioctl_init);
