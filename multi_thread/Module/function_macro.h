@@ -14,7 +14,7 @@ typedef struct
 {
     long dwFlsIndex;
     unsigned long lpFlsData;
-} fls_set_arg_t;
+} fls_arg_t;
 
 #define CONVERTTOFIBER       _IO('q', 1)
 #define CREATEFIBER 		 _IO('q', 2)

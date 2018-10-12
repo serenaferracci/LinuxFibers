@@ -18,11 +18,10 @@
 
 #include "fiber_ioctl.h"
 #include "function_macro.h"
+#include "proc.h"
  
 #define FIRST_MINOR 0
 #define MINOR_CNT 1
-#define ALIGN_SIZE 16
-
  
 static dev_t dev;
 static struct cdev c_dev;
@@ -69,7 +68,6 @@ int Pre_Handler(struct kprobe *p, struct pt_regs *regs){
 	thr_id = current->pid;
 	process = search_process(pro_id);
 	if(process == NULL) return 0;
-
 	thread = search_thread(thr_id, process);
 	if(thread == NULL) return 0; 
 	fiber = thread->active_fiber;
@@ -129,9 +127,12 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		fiber_arg_t* fiber = (fiber_arg_t*) kzalloc(sizeof(fiber_arg_t), GFP_KERNEL);
 		process_arg_t* process;
 		thread_arg_t* thread;
+		int err;
 
-		//sanity check access_ok
-		copy_from_user(args, (void *)arg, sizeof(create_arg_t));
+		err = access_ok(VERIFY_READ, (void *)arg, sizeof(create_arg_t));
+		if(!err) return -1;
+		err = copy_from_user(args, (void *)arg, sizeof(create_arg_t));
+		if(err) return -1;
 
 		pro_id = current->tgid;
 		thr_id = current->pid;
@@ -246,12 +247,15 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 	}
 	
 	else if (cmd == FLSGETVALUE){
-		int pro_id, thr_id;
+		int pro_id, thr_id, err;
 		long index;
 		process_arg_t *process;
 		thread_arg_t *thread;
-		fls_set_arg_t* args = (fls_set_arg_t*) kzalloc (sizeof(fls_set_arg_t), GFP_KERNEL);
-		copy_from_user(args, (void *)arg, sizeof(fls_set_arg_t));
+		fls_arg_t* args = (fls_arg_t*) kzalloc (sizeof(fls_arg_t), GFP_KERNEL);
+		err = access_ok(VERIFY_READ, (void *)arg, sizeof(fls_arg_t));
+		if(!err) return -1;
+		err = copy_from_user(args, (void *)arg, sizeof(fls_arg_t));
+		if(err) return -1;
 		index = args->dwFlsIndex;
 		pro_id = current->tgid;
 		thr_id = current->pid;
@@ -262,9 +266,13 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		if(thread != NULL){
 			fiber_arg_t* fiber = thread->active_fiber;
 			if(test_bit(index, fiber->fls_bitmap)){
+				int err;
 				unsigned long ret = fiber->fls_array[index];
 				args->lpFlsData = ret;
-				copy_to_user((void *)arg, args, sizeof(fls_set_arg_t));
+				err = access_ok(VERIFY_WRITE, (void *)arg, sizeof(fls_arg_t));
+				if(!err) return -1;
+				err = copy_to_user((void *)arg, args, sizeof(fls_arg_t));
+				if(err) return -1;
 				kfree(args);
 				return 1;
 			}
@@ -278,9 +286,13 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		process_arg_t *process;
 		thread_arg_t *thread;
 		int pro_id, thr_id;
+		int err;
 
-		fls_set_arg_t* args = (fls_set_arg_t*) kzalloc (sizeof(fls_set_arg_t), GFP_KERNEL);
-		copy_from_user(args, (void *)arg, sizeof(fls_set_arg_t));
+		fls_arg_t* args = (fls_arg_t*) kzalloc (sizeof(fls_arg_t), GFP_KERNEL);
+		err = access_ok(VERIFY_READ, (void *)arg, sizeof(fls_arg_t));
+		if(!err) return -1;
+		err = copy_from_user(args, (void *)arg, sizeof(fls_arg_t));
+		if(err) return -1;
 
 		index = args->dwFlsIndex;
 
@@ -345,9 +357,8 @@ static int __init fiber_ioctl_init(void)
 
 	proc_readdir = (void*)kallsyms_lookup_name("proc_pident_readdir");
 	proc_lookup = (void*)kallsyms_lookup_name("proc_pident_lookup");
-    probe.addr = (kprobe_opcode_t *)proc_readdir;
+    //probe.addr = (kprobe_opcode_t *)proc_readdir;
     register_kprobe(&probe); 
-	register_kprobe(&probe_proc);
     return 0;
 }
  

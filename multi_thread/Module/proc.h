@@ -1,6 +1,7 @@
 #ifndef PROC_H
 #define PROC_H
 
-int Pre_Handler_Proc(struct kprobe *p, struct pt_regs *regs);
+int fh_install_hook (struct ftrace_hook *hook);
 
+void fh_remove_hook (struct ftrace_hook *hook);
 #endif

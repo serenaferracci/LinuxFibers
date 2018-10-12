@@ -3,6 +3,7 @@
 
 #include <linux/hashtable.h>
 #include <linux/bitmap.h>
+#include <linux/ftrace.h>
 
 #define MAX_FLS 4096
 static struct kprobe probe_proc;
@@ -36,6 +37,15 @@ typedef struct
     DECLARE_HASHTABLE(threads, 10);
     long fiber_id;
 } process_arg_t;
+
+struct ftrace_hook {
+        const char *name;
+        void *function;
+        void *original;
+ 
+        unsigned long address;
+        struct ftrace_ops ops;
+};
 
 DECLARE_HASHTABLE(list_process, 10);
 DEFINE_SPINLOCK(lock_fiber);
