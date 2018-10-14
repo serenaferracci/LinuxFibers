@@ -19,6 +19,8 @@
 #include "fiber_ioctl.h"
 #include "function_macro.h"
 #include "proc.h"
+#include "fiber_ioctl.h"
+#include "declarations.h"
  
 #define FIRST_MINOR 0
 #define MINOR_CNT 1
@@ -91,6 +93,7 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		thread_arg_t* thread;
 
 		pro_id = current->tgid;
+		printk("pid: %d\n", pro_id);
 		thr_id = current->pid;
 
 		process = search_process(pro_id);

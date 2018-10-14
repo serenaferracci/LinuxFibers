@@ -7,7 +7,24 @@
 #include <linux/uaccess.h>
 #include <linux/fs_struct.h>
 #include <linux/dcache.h>
+#include <linux/pid.h>
 #include "proc.h"
+#include "fiber_ioctl.h"
+
+static inline struct proc_inode *PROC_I(const struct inode *inode)
+{
+	return container_of(inode, struct proc_inode, vfs_inode);
+}
+
+static inline struct pid *proc_pid(struct inode *inode)
+{
+	return PROC_I(inode)->pid;
+}
+
+static inline struct task_struct *get_proc_task(struct inode *inode)
+{
+	return get_pid_task(proc_pid(inode), PIDTYPE_PID);
+}
 
 
 static int fh_resolve_hook_address(struct ftrace_hook *hook)
@@ -141,26 +158,34 @@ static asmlinkage int fh_readdir(struct file *file, struct dir_context *ctx,
 		const struct pid_entry *ents, unsigned int nents)
 {
 	long ret = 0;
+	pid_t pid_process;
 	struct pid_entry fiber;
+	struct task_struct *task;
+	process_arg_t *process;
 	const struct pid_entry *ents_fiber;
 	struct pid_entry *temp = (struct pid_entry *) kzalloc (sizeof(struct pid_entry)*(nents+1), GFP_KERNEL);
-	memcpy((void*)temp, ents,sizeof(struct pid_entry)*nents);
-	fiber.name = "fiber";
-	fiber.len  = sizeof("fiber") - 1;
-	fiber.mode = S_IRUGO|S_IXUGO;
-	fiber.iop  = NULL;
-	fiber.fop  = NULL;
-	temp[nents] = fiber;
+	
+	task = get_proc_task(file_inode(file));
+	pid_process = task->pid;
+	process = search_process(pid_process);
 
-	ents_fiber = (struct pid_entry *) kzalloc (sizeof(struct pid_entry)*(nents+1), GFP_KERNEL);
-	memcpy((void*)ents_fiber, temp ,sizeof(struct pid_entry)*(nents+1));
-
-	pr_info("clone() before\n");
-
-	ret = real_readdir(file, ctx,ents_fiber, nents+1);
-
-	pr_info("clone() after: %ld\n", ret);
-
+	if(process != NULL){
+		memcpy((void*)temp, ents,sizeof(struct pid_entry)*nents);
+		fiber.name = "fiber";
+		fiber.len  = sizeof("fiber") - 1;
+		fiber.mode = S_IRUGO|S_IXUGO;
+		fiber.iop  = NULL;
+		fiber.fop  = NULL;
+		temp[nents] = fiber;
+		ents_fiber = (struct pid_entry *) kzalloc (sizeof(struct pid_entry)*(nents+1), GFP_KERNEL);
+		memcpy((void*)ents_fiber, temp ,sizeof(struct pid_entry)*(nents+1));
+		ret = real_readdir(file, ctx,ents_fiber, nents+1);
+		kfree(ents_fiber);
+	}
+	else{
+		ret = real_readdir(file, ctx, ents, nents);
+	}
+	kfree(temp);
 	return ret;
 }
 

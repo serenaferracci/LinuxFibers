@@ -28,6 +28,18 @@ struct pid_entry {
 	union proc_op op;
 };
 
+struct proc_inode {
+	struct pid *pid;
+	unsigned int fd;
+	union proc_op op;
+	struct proc_dir_entry *pde;
+	struct ctl_table_header *sysctl;
+	struct ctl_table *sysctl_entry;
+	struct hlist_node sysctl_inodes;
+	const struct proc_ns_operations *ns_ops;
+	struct inode vfs_inode;
+} __randomize_layout;
+
 
 
 int fh_install_hook (struct ftrace_hook *hook);
