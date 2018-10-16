@@ -26,6 +26,76 @@ static inline struct task_struct *get_proc_task(struct inode *inode)
 	return get_pid_task(proc_pid(inode), PIDTYPE_PID);
 }
 
+struct inode_operations fibers_iop;
+struct file_operations fibers_fop;
+
+int fibers_readdir (struct file * file, struct dir_context * ctx){
+	pid_t pid_process;
+	struct task_struct *task;
+	process_arg_t *process;
+	struct pid_entry *ents_fiber;
+	unsigned long flags;
+	int i, ret;
+	fiber_arg_t *fiber;
+	long num_fibers;
+
+	task = get_proc_task(file_inode(file));
+	pid_process = task->tgid;
+	process = search_process(pid_process);
+	spin_lock_irqsave(&lock_fiber, flags);
+	num_fibers = process->fiber_id;
+	ents_fiber = (struct pid_entry *) kzalloc (sizeof(struct pid_entry)*(num_fibers), GFP_KERNEL);
+	spin_unlock_irqrestore(&lock_fiber, flags);
+	hash_for_each_rcu(process->fibers, i, fiber, f_list){
+		//char name [8];
+		unsigned long id = fiber->index;
+		//ents_fiber[id].len = snprintf(name, 8, "%lu", id);
+		ents_fiber[id].name = fiber->name;
+		ents_fiber[id].len = strnlen(fiber->name, 8);
+		//memcpy(&(ents_fiber[id].name), &name, ents_fiber[id].len);
+		ents_fiber[id].mode = S_IFREG|S_IRUGO|S_IXUGO;
+		ents_fiber[id].iop = NULL;
+		ents_fiber[id].fop = NULL;
+	}
+	printk("Exit for each -- num fiber: %ld\n", num_fibers);
+	proc_pident_readdir_t readdir = kallsyms_lookup_name("proc_pident_readdir");
+	printk("Prima di eseguire readdir\n");
+	ret = readdir(file, ctx, ents_fiber, num_fibers);
+	printk("ret: %d\n", ret);
+	return ret;
+}
+
+struct dentry* fibers_lookup (struct inode *dir, struct dentry *dentry, unsigned int flags){
+	pid_t pid_process;
+	struct task_struct *task;
+	process_arg_t *process;
+	struct pid_entry *ents_fiber;
+	unsigned long flags_lock;
+	int i;
+	fiber_arg_t *fiber;
+	long num_fibers;
+
+	task = get_proc_task(dir);
+	pid_process = task->tgid;
+	process = search_process(pid_process);
+	spin_lock_irqsave(&lock_fiber, flags_lock);
+	num_fibers = process->fiber_id;
+	ents_fiber = (struct pid_entry *) kzalloc (sizeof(struct pid_entry)*(num_fibers), GFP_KERNEL);
+	spin_unlock_irqrestore(&lock_fiber, flags_lock);
+	hash_for_each_rcu(process->fibers, i, fiber, f_list){
+		//char name [8];
+		unsigned long id = fiber->index;
+		//ents_fiber[id].len = snprintf(name, 8, "%lu", id);
+		ents_fiber[id].name = fiber->name;
+		ents_fiber[id].len = strnlen(fiber->name, 8);
+		//memcpy(&(ents_fiber[id].name), &name, ents_fiber[id].len);
+		ents_fiber[id].mode = S_IFREG|S_IRUGO|S_IXUGO;
+		ents_fiber[id].iop = NULL;
+		ents_fiber[id].fop = NULL;
+	}
+	proc_pident_lookup_t real_lookup = kallsyms_lookup_name("proc_pident_lookup");
+	return real_lookup(dir, dentry, ents_fiber, num_fibers);
+}
 
 static int fh_resolve_hook_address(struct ftrace_hook *hook)
 {
@@ -47,12 +117,6 @@ static void notrace fh_ftrace_thunk(unsigned long ip, unsigned long parent_ip,
 		regs->ip = (unsigned long) hook->function;
 }
 
-/**
- * fh_install_hooks() - register and enable a single hook
- * @hook: a hook to install
- *
- * Returns: zero on success, negative error code otherwise.
- */
 int fh_install_hook(struct ftrace_hook *hook)
 {
 	int err;
@@ -61,12 +125,6 @@ int fh_install_hook(struct ftrace_hook *hook)
 	if (err)
 		return err;
 
-	/*
-	 * We're going to modify %rip register so we'll need IPMODIFY flag
-	 * and SAVE_REGS as its prerequisite. ftrace's anti-recursion guard
-	 * is useless if we change %rip so disable it with RECURSION_SAFE.
-	 * We'll perform our own checks for trace function reentry.
-	 */
 	hook->ops.func = fh_ftrace_thunk;
 	hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS
 	                | FTRACE_OPS_FL_RECURSION_SAFE
@@ -89,10 +147,6 @@ int fh_install_hook(struct ftrace_hook *hook)
 	return 0;
 }
 
-/**
- * fh_remove_hooks() - disable and unregister a single hook
- * @hook: a hook to remove
- */
 void fh_remove_hook(struct ftrace_hook *hook)
 {
 	int err;
@@ -108,15 +162,7 @@ void fh_remove_hook(struct ftrace_hook *hook)
 	}
 }
 
-/**
- * fh_install_hooks() - register and enable multiple hooks
- * @hooks: array of hooks to install
- * @count: number of hooks to install
- *
- * If some hooks fail to install then all hooks will be removed.
- *
- * Returns: zero on success, negative error code otherwise.
- */
+
 int fh_install_hooks(struct ftrace_hook *hooks, size_t count)
 {
 	int err;
@@ -138,11 +184,6 @@ error:
 	return err;
 }
 
-/**
- * fh_remove_hooks() - disable and unregister multiple hooks
- * @hooks: array of hooks to remove
- * @count: number of hooks to remove
- */
 void fh_remove_hooks(struct ftrace_hook *hooks, size_t count)
 {
 	size_t i;
@@ -157,7 +198,7 @@ static asmlinkage int (*real_readdir)(struct file *file, struct dir_context *ctx
 static asmlinkage int fh_readdir(struct file *file, struct dir_context *ctx,
 		const struct pid_entry *ents, unsigned int nents)
 {
-	long ret = 0;
+	int ret = 0;
 	pid_t pid_process;
 	struct pid_entry fiber;
 	struct task_struct *task;
@@ -166,16 +207,20 @@ static asmlinkage int fh_readdir(struct file *file, struct dir_context *ctx,
 	struct pid_entry *temp = (struct pid_entry *) kzalloc (sizeof(struct pid_entry)*(nents+1), GFP_KERNEL);
 	
 	task = get_proc_task(file_inode(file));
-	pid_process = task->pid;
+	pid_process = task->tgid;
 	process = search_process(pid_process);
 
 	if(process != NULL){
+		fibers_fop.iterate_shared = fibers_readdir;
+		fibers_iop.lookup = fibers_lookup;
+		fibers_iop.getattr = kallsyms_lookup_name("pid_getattr");
+		fibers_iop.setattr = kallsyms_lookup_name("proc_setattr");
 		memcpy((void*)temp, ents,sizeof(struct pid_entry)*nents);
 		fiber.name = "fiber";
 		fiber.len  = sizeof("fiber") - 1;
-		fiber.mode = S_IRUGO|S_IXUGO;
-		fiber.iop  = NULL;
-		fiber.fop  = NULL;
+		fiber.mode = S_IFDIR|S_IRUGO|S_IXUGO;
+		fiber.iop  = &fibers_iop;
+		fiber.fop  = &fibers_fop;
 		temp[nents] = fiber;
 		ents_fiber = (struct pid_entry *) kzalloc (sizeof(struct pid_entry)*(nents+1), GFP_KERNEL);
 		memcpy((void*)ents_fiber, temp ,sizeof(struct pid_entry)*(nents+1));
@@ -189,31 +234,6 @@ static asmlinkage int fh_readdir(struct file *file, struct dir_context *ctx,
 	return ret;
 }
 
-static asmlinkage struct dentry * (*real_lookup)(struct inode *dir, 
-					 struct dentry *dentry,
-					 const struct pid_entry *ents,
-					 unsigned int nents);
-
-static asmlinkage struct dentry * fh_lookup(struct inode *dir, 
-					 struct dentry *dentry,
-					 const struct pid_entry *ents,
-					 unsigned int nents)
-{
-	struct dentry * ret = NULL;
-	/*char *kernel_filename;
-
-	kernel_filename = duplicate_filename(filename);
-
-	pr_info("execve() before: %s\n", kernel_filename);
-
-	kfree(kernel_filename);
-
-	ret = real_lookup(filename, argv, envp);
-
-	pr_info("execve() after: %ld\n", ret);*/
-
-	return ret;
-}
 
 #define HOOK(_name, _function, _original)	\
 	{					\
@@ -224,7 +244,7 @@ static asmlinkage struct dentry * fh_lookup(struct inode *dir,
 
 static struct ftrace_hook demo_hooks[] = {
 	HOOK("proc_pident_readdir",  fh_readdir,  &real_readdir),
-	HOOK("proc_pident_lookup", fh_lookup, &real_lookup),
+	//HOOK("proc_tgid_base_lookup", fh_lookup, &real_lookup),
 };
 
 int fh_init(void)

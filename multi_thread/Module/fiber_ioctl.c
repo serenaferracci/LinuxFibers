@@ -113,6 +113,8 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			hash_add(process->threads, &thread->t_list, thread->pid);
 
 			fiber->index = __sync_fetch_and_add(&process->fiber_id, 1);
+			snprintf(fiber->name, 8, "%lu", fiber->index);
+			printk("name: %s\n", fiber->name);
 			memcpy(&(fiber->regs), task_pt_regs(current), sizeof(struct pt_regs));
 			fiber->running = true;
 			memset((char *)&(fiber->fpu_reg), 0, sizeof(struct fpu));
@@ -148,7 +150,7 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		if(thread != NULL){
 			fiber->running = false;
 			fiber->index = __sync_fetch_and_add(&process->fiber_id, 1);
-
+			snprintf(fiber->name, 8, "%lu", fiber->index);
 			memcpy(&(fiber->regs), task_pt_regs(current), sizeof(struct pt_regs));
 			fiber->regs.sp = (unsigned long)args->dwStackPointer;
 			fiber->regs.ip = (unsigned long)args->lpStartAddress;

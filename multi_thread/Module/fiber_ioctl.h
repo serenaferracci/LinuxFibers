@@ -11,6 +11,7 @@ typedef struct
 {
 	bool running;
 	unsigned long index;
+    char name[8];
 	struct pt_regs regs;
     struct hlist_node f_list;
     long fls_in;

@@ -40,7 +40,20 @@ struct proc_inode {
 	struct inode vfs_inode;
 } __randomize_layout;
 
+int fibers_readdir (struct file *, struct dir_context *);
 
+typedef struct dentry * (*proc_pident_lookup_t)(struct inode *dir, 
+					 struct dentry *dentry,
+					 const struct pid_entry *ents,
+					 unsigned int nents);
+
+typedef int (*proc_pident_readdir_t)(struct file *file, struct dir_context *ctx,
+					 const struct pid_entry *ents,
+					 unsigned int nents);
+
+
+
+extern spinlock_t lock_fiber;
 
 int fh_install_hook (struct ftrace_hook *hook);
 
