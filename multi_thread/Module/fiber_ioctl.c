@@ -54,7 +54,7 @@ thread_arg_t* search_thread(pid_t thr_id, process_arg_t* process){
 fiber_arg_t* search_fiber(int index, process_arg_t* process){
 	fiber_arg_t *fiber;
 	hash_for_each_possible(process->fibers, fiber, f_list, index){
-		if(fiber->index == index && !fiber->running) {
+		if(fiber->index == index) {
 			return fiber;
 		}
 	}
@@ -105,7 +105,7 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			hash_init(process->threads);
 			hash_init(process->fibers);
 		}
-
+		printk("proc pid: %d, thr pid: %d\n", pro_id, thr_id);
 		thread = search_thread(thr_id, process);
 		if(thread == NULL){
 			thread = (thread_arg_t*) kzalloc(sizeof(thread_arg_t), GFP_KERNEL);
@@ -113,10 +113,16 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			hash_add(process->threads, &thread->t_list, thread->pid);
 
 			fiber->index = __sync_fetch_and_add(&process->fiber_id, 1);
+			fiber->thread_id = thr_id;
+			fiber->starting_point = task_pt_regs(current)->ip;
 			snprintf(fiber->name, 8, "%lu", fiber->index);
 			printk("name: %s\n", fiber->name);
 			memcpy(&(fiber->regs), task_pt_regs(current), sizeof(struct pt_regs));
 			fiber->running = true;
+			fiber->activations = 0;
+			fiber->failed_activations = 0;
+			fiber->starting_time = 0;
+			fiber->total_time = 0;
 			memset((char *)&(fiber->fpu_reg), 0, sizeof(struct fpu));
 			copy_fxregs_to_kernel(&(fiber->fpu_reg));
 			hash_add(process->fibers, &fiber->f_list, fiber->index);
@@ -150,6 +156,12 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		if(thread != NULL){
 			fiber->running = false;
 			fiber->index = __sync_fetch_and_add(&process->fiber_id, 1);
+			fiber->activations = 0;
+			fiber->failed_activations = 0;
+			fiber->thread_id = thr_id;
+			fiber->starting_point = (unsigned long)args->lpStartAddress;
+			fiber->starting_time = 0;
+			fiber->total_time = 0;
 			snprintf(fiber->name, 8, "%lu", fiber->index);
 			memcpy(&(fiber->regs), task_pt_regs(current), sizeof(struct pt_regs));
 			fiber->regs.sp = (unsigned long)args->dwStackPointer;
@@ -173,6 +185,7 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		process_arg_t* process;
 		thread_arg_t* thread;
 		fiber_arg_t* fiber;
+		struct timespec ts;
 		spin_lock_irq(&lock_fiber);
 
 		pro_id = current->tgid;
@@ -184,6 +197,11 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		}
 		fiber = search_fiber(fib_id, process);
 		if(fiber == NULL) {
+			spin_unlock_irq(&lock_fiber);
+			return -1;
+		}
+		if(fiber->running){
+			fiber->failed_activations += 1;
 			spin_unlock_irq(&lock_fiber);
 			return -1;
 		}
@@ -199,8 +217,18 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			copy_kernel_to_fxregs(&(fpu_reg->state.fxsave));
 
 			thread->active_fiber->running = false;
+			if (thread->active_fiber->starting_time != 0){
+				unsigned long time_fiber;
+				getnstimeofday(&ts);
+				time_fiber = (unsigned long)ts.tv_nsec + (unsigned long)ts.tv_sec*1000000000 - thread->active_fiber->starting_time;
+				time_fiber /= 1000;
+				thread->active_fiber->total_time += time_fiber;
+			}
 			thread->active_fiber = fiber;
 			fiber->running = true;
+			fiber->activations += 1;
+			getnstimeofday(&ts);
+			fiber->starting_time = (unsigned long)ts.tv_nsec + (unsigned long)ts.tv_sec*1000000000;
 			spin_unlock_irq(&lock_fiber);
 			return 0;
 		}

@@ -917,6 +917,7 @@ deps_/home/serenaferracci/Desktop/project_aosv/aosv/multi_thread/Module/proc.o :
     $(wildcard include/config/x86/smap.h) \
   arch/x86/include/asm/uaccess_64.h \
   include/linux/fs_struct.h \
+  include/linux/seq_file.h \
   /home/serenaferracci/Desktop/project_aosv/aosv/multi_thread/Module/proc.h \
   include/linux/proc_fs.h \
   /home/serenaferracci/Desktop/project_aosv/aosv/multi_thread/Module/fiber_ioctl.h \

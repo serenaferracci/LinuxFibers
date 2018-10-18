@@ -8,6 +8,7 @@
 #include <linux/fs_struct.h>
 #include <linux/dcache.h>
 #include <linux/pid.h>
+#include <linux/seq_file.h>
 #include "proc.h"
 #include "fiber_ioctl.h"
 
@@ -28,6 +29,39 @@ static inline struct task_struct *get_proc_task(struct inode *inode)
 
 struct inode_operations fibers_iop;
 struct file_operations fibers_fop;
+struct file_operations file_fop;
+
+int show_file(struct seq_file *m, void *v){
+	void* data = m->private;
+	fiber_arg_t* fiber = (fiber_arg_t*)data;
+	if(fiber->running) seq_printf(m, "The fiber is currently running\n");
+	else seq_printf(m, "The fiber is not currently running\n");
+	seq_printf(m, "Entry point: %p\n", (void*)fiber->starting_point);
+	seq_printf(m, "Thread id: %lu\n", fiber->thread_id);
+	seq_printf(m, "Number of activations: %lu\n", fiber->activations);
+	seq_printf(m, "Number of  falied activations: %lu\n", fiber->failed_activations);
+	seq_printf(m, "Execution time: %lu\n", fiber->total_time);
+	/*
+– total execution time in that Fiber context*/
+	return 0;
+}
+
+int open_file (struct inode *inode, struct file *filp){
+	pid_t pid_process;
+	struct task_struct *task;
+	process_arg_t *process;
+	fiber_arg_t *fiber;
+	unsigned long fiber_id;
+	task = get_proc_task(file_inode(filp));
+	pid_process = task->tgid;
+	printk("pid: %u\n", pid_process);
+	kstrtoul(filp->f_path.dentry->d_name.name, 10, &fiber_id);
+	printk("fiber id: %lu\n", fiber_id);
+	process = search_process(pid_process);
+	printk("processo trovato\n");
+	fiber = search_fiber(fiber_id, process);
+	return single_open(filp, show_file, fiber);
+}
 
 int fibers_readdir (struct file * file, struct dir_context * ctx){
 	pid_t pid_process;
@@ -35,9 +69,10 @@ int fibers_readdir (struct file * file, struct dir_context * ctx){
 	process_arg_t *process;
 	struct pid_entry *ents_fiber;
 	unsigned long flags;
-	int i, ret;
+	int i;
 	fiber_arg_t *fiber;
 	long num_fibers;
+	proc_pident_readdir_t readdir;
 
 	task = get_proc_task(file_inode(file));
 	pid_process = task->tgid;
@@ -47,22 +82,19 @@ int fibers_readdir (struct file * file, struct dir_context * ctx){
 	ents_fiber = (struct pid_entry *) kzalloc (sizeof(struct pid_entry)*(num_fibers), GFP_KERNEL);
 	spin_unlock_irqrestore(&lock_fiber, flags);
 	hash_for_each_rcu(process->fibers, i, fiber, f_list){
-		//char name [8];
 		unsigned long id = fiber->index;
-		//ents_fiber[id].len = snprintf(name, 8, "%lu", id);
 		ents_fiber[id].name = fiber->name;
 		ents_fiber[id].len = strnlen(fiber->name, 8);
-		//memcpy(&(ents_fiber[id].name), &name, ents_fiber[id].len);
 		ents_fiber[id].mode = S_IFREG|S_IRUGO|S_IXUGO;
 		ents_fiber[id].iop = NULL;
-		ents_fiber[id].fop = NULL;
+		file_fop.open = open_file;
+		file_fop.read = seq_read;
+		file_fop.llseek	= seq_lseek;
+		file_fop.release = single_release;
+		ents_fiber[id].fop = &file_fop;
 	}
-	printk("Exit for each -- num fiber: %ld\n", num_fibers);
-	proc_pident_readdir_t readdir = kallsyms_lookup_name("proc_pident_readdir");
-	printk("Prima di eseguire readdir\n");
-	ret = readdir(file, ctx, ents_fiber, num_fibers);
-	printk("ret: %d\n", ret);
-	return ret;
+	readdir = (proc_pident_readdir_t)kallsyms_lookup_name("proc_pident_readdir");
+	return readdir(file, ctx, ents_fiber, num_fibers);
 }
 
 struct dentry* fibers_lookup (struct inode *dir, struct dentry *dentry, unsigned int flags){
@@ -74,6 +106,7 @@ struct dentry* fibers_lookup (struct inode *dir, struct dentry *dentry, unsigned
 	int i;
 	fiber_arg_t *fiber;
 	long num_fibers;
+	proc_pident_lookup_t real_lookup;
 
 	task = get_proc_task(dir);
 	pid_process = task->tgid;
@@ -83,17 +116,18 @@ struct dentry* fibers_lookup (struct inode *dir, struct dentry *dentry, unsigned
 	ents_fiber = (struct pid_entry *) kzalloc (sizeof(struct pid_entry)*(num_fibers), GFP_KERNEL);
 	spin_unlock_irqrestore(&lock_fiber, flags_lock);
 	hash_for_each_rcu(process->fibers, i, fiber, f_list){
-		//char name [8];
 		unsigned long id = fiber->index;
-		//ents_fiber[id].len = snprintf(name, 8, "%lu", id);
 		ents_fiber[id].name = fiber->name;
 		ents_fiber[id].len = strnlen(fiber->name, 8);
-		//memcpy(&(ents_fiber[id].name), &name, ents_fiber[id].len);
 		ents_fiber[id].mode = S_IFREG|S_IRUGO|S_IXUGO;
 		ents_fiber[id].iop = NULL;
-		ents_fiber[id].fop = NULL;
+		file_fop.open = open_file;
+		file_fop.read = seq_read;
+		file_fop.llseek	= seq_lseek;
+		file_fop.release = single_release;
+		ents_fiber[id].fop = &file_fop;
 	}
-	proc_pident_lookup_t real_lookup = kallsyms_lookup_name("proc_pident_lookup");
+	real_lookup = (proc_pident_lookup_t) kallsyms_lookup_name("proc_pident_lookup");
 	return real_lookup(dir, dentry, ents_fiber, num_fibers);
 }
 
@@ -210,7 +244,7 @@ static asmlinkage int fh_readdir(struct file *file, struct dir_context *ctx,
 	pid_process = task->tgid;
 	process = search_process(pid_process);
 
-	if(process != NULL){
+	if(process != NULL && strncmp(file->f_path.dentry->d_name.name, "fiber", strlen("fiber")) != 0){
 		fibers_fop.iterate_shared = fibers_readdir;
 		fibers_iop.lookup = fibers_lookup;
 		fibers_iop.getattr = kallsyms_lookup_name("pid_getattr");
