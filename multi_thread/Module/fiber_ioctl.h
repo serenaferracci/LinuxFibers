@@ -17,8 +17,6 @@ typedef struct
     char name[8];
 	struct pt_regs regs;
     struct hlist_node f_list;
-    long fls_in;
-    DECLARE_BITMAP(set_bitmap, sizeof(MAX_FLS));
     DECLARE_BITMAP(fls_bitmap, sizeof(MAX_FLS));
     unsigned long fls_array[MAX_FLS];
     struct fpu fpu_reg;

@@ -54,11 +54,8 @@ int open_file (struct inode *inode, struct file *filp){
 	unsigned long fiber_id;
 	task = get_proc_task(file_inode(filp));
 	pid_process = task->tgid;
-	printk("pid: %u\n", pid_process);
 	kstrtoul(filp->f_path.dentry->d_name.name, 10, &fiber_id);
-	printk("fiber id: %lu\n", fiber_id);
 	process = search_process(pid_process);
-	printk("processo trovato\n");
 	fiber = search_fiber(fiber_id, process);
 	return single_open(filp, show_file, fiber);
 }
@@ -156,8 +153,7 @@ int fh_install_hook(struct ftrace_hook *hook)
 	int err;
 
 	err = fh_resolve_hook_address(hook);
-	if (err)
-		return err;
+	if (err) return err;
 
 	hook->ops.func = fh_ftrace_thunk;
 	hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS
@@ -176,24 +172,16 @@ int fh_install_hook(struct ftrace_hook *hook)
 		ftrace_set_filter_ip(&hook->ops, hook->address, 1, 0);
 		return err;
 	}
-	printk("installed\n");
-
 	return 0;
 }
 
 void fh_remove_hook(struct ftrace_hook *hook)
 {
 	int err;
-
 	err = unregister_ftrace_function(&hook->ops);
-	if (err) {
-		pr_debug("unregister_ftrace_function() failed: %d\n", err);
-	}
-
+	if (err) pr_debug("unregister_ftrace_function() failed: %d\n", err);
 	err = ftrace_set_filter_ip(&hook->ops, hook->address, 1, 0);
-	if (err) {
-		pr_debug("ftrace_set_filter_ip() failed: %d\n", err);
-	}
+	if (err) pr_debug("ftrace_set_filter_ip() failed: %d\n", err);
 }
 
 
@@ -204,18 +192,12 @@ int fh_install_hooks(struct ftrace_hook *hooks, size_t count)
 
 	for (i = 0; i < count; i++) {
 		err = fh_install_hook(&hooks[i]);
-		if (err)
-			goto error;
+		if (err){
+			while (i != 0) fh_remove_hook(&hooks[--i]);
+			return err;
+		}
 	}
-
 	return 0;
-
-error:
-	while (i != 0) {
-		fh_remove_hook(&hooks[--i]);
-	}
-
-	return err;
 }
 
 void fh_remove_hooks(struct ftrace_hook *hooks, size_t count)

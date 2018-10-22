@@ -89,8 +89,8 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 
 		pid_t pro_id, thr_id;
 		process_arg_t* process;
-		fiber_arg_t* fiber = (fiber_arg_t*) kzalloc(sizeof(fiber_arg_t), GFP_KERNEL);
 		thread_arg_t* thread;
+		fiber_arg_t* fiber = (fiber_arg_t*) kzalloc(sizeof(fiber_arg_t), GFP_KERNEL);
 
 		pro_id = current->tgid;
 		printk("pid: %d\n", pro_id);
@@ -99,16 +99,17 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		process = search_process(pro_id);
 		if(process == NULL){
 			process = (process_arg_t*) kzalloc(sizeof(process_arg_t), GFP_KERNEL);
+			if (!process) return -ENOMEM;
 			process->fiber_id = 0;
 			process->pid = pro_id;
 			hash_add(list_process, &process->p_list, process->pid);
 			hash_init(process->threads);
 			hash_init(process->fibers);
 		}
-		printk("proc pid: %d, thr pid: %d\n", pro_id, thr_id);
 		thread = search_thread(thr_id, process);
 		if(thread == NULL){
 			thread = (thread_arg_t*) kzalloc(sizeof(thread_arg_t), GFP_KERNEL);
+			if (!thread) return -ENOMEM;
 			thread->pid = thr_id;
 			hash_add(process->threads, &thread->t_list, thread->pid);
 
@@ -116,7 +117,6 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			fiber->thread_id = thr_id;
 			fiber->starting_point = task_pt_regs(current)->ip;
 			snprintf(fiber->name, 8, "%lu", fiber->index);
-			printk("name: %s\n", fiber->name);
 			memcpy(&(fiber->regs), task_pt_regs(current), sizeof(struct pt_regs));
 			fiber->running = true;
 			fiber->activations = 0;
@@ -251,6 +251,7 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		if(thread != NULL){
 			fiber_arg_t* fiber = thread->active_fiber;
 			long index = find_first_zero_bit(fiber->fls_bitmap, MAX_FLS);
+			if (index == MAX_FLS) return -1;
 			change_bit(index, fiber->fls_bitmap);
 			fiber->fls_array[index] = 0;
 			return index;
@@ -274,8 +275,10 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		thread = search_thread(thr_id, process);
 		if(thread != NULL){
 			fiber_arg_t* fiber = thread->active_fiber;
-			clear_bit(index, fiber->fls_bitmap);
-			return true;
+			if(index > 0 && index < MAX_FLS){
+				clear_bit(index, fiber->fls_bitmap);
+				return true;
+			}
 		}
 		return false;
 	}
@@ -286,6 +289,7 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		process_arg_t *process;
 		thread_arg_t *thread;
 		fls_arg_t* args = (fls_arg_t*) kzalloc (sizeof(fls_arg_t), GFP_KERNEL);
+		if (!args) return -ENOMEM;
 		err = access_ok(VERIFY_READ, (void *)arg, sizeof(fls_arg_t));
 		if(!err) return -1;
 		err = copy_from_user(args, (void *)arg, sizeof(fls_arg_t));
@@ -323,6 +327,7 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		int err;
 
 		fls_arg_t* args = (fls_arg_t*) kzalloc (sizeof(fls_arg_t), GFP_KERNEL);
+		if (!args) return -ENOMEM;
 		err = access_ok(VERIFY_READ, (void *)arg, sizeof(fls_arg_t));
 		if(!err) return -1;
 		err = copy_from_user(args, (void *)arg, sizeof(fls_arg_t));
@@ -363,8 +368,6 @@ static int __init fiber_ioctl_init(void)
 {
     int ret;
     struct device *dev_ret;
-    void* proc_readdir;
-    void* proc_lookup;
  
     if ((ret = alloc_chrdev_region(&dev, FIRST_MINOR, MINOR_CNT, "fiber_ioctl")) < 0) return ret; 
     cdev_init(&c_dev, &fiber_fops);
@@ -385,13 +388,8 @@ static int __init fiber_ioctl_init(void)
     }
 
 	hash_init(list_process);
-
     probe.pre_handler = Pre_Handler;  
     probe.addr = (kprobe_opcode_t *)do_exit; 
-
-	proc_readdir = (void*)kallsyms_lookup_name("proc_pident_readdir");
-	proc_lookup = (void*)kallsyms_lookup_name("proc_pident_lookup");
-    //probe.addr = (kprobe_opcode_t *)proc_readdir;
     register_kprobe(&probe); 
 	fh_init();
     return 0;

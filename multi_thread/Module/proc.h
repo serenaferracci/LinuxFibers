@@ -52,15 +52,10 @@ typedef int (*proc_pident_readdir_t)(struct file *file, struct dir_context *ctx,
 					 unsigned int nents);
 
 
-
 extern spinlock_t lock_fiber;
-
 int fh_install_hook (struct ftrace_hook *hook);
-
 void fh_remove_hook (struct ftrace_hook *hook);
-
 int fh_init(void);
-
 void fh_exit(void);
 
 #endif

@@ -27,24 +27,22 @@ void init_file(){
  
 void* ConvertThreadToFiber()
 {	
-    printf("Enter Convert Fiber\n");
 	if (done == 0) init_file();
     unsigned long ret = (unsigned long)ioctl(fd, CONVERTTOFIBER);
     if ((unsigned long)ret == (unsigned long)-1){
         printf("Unable to convert the thread\n");
         return (void*)-1;
     }
-    printf("Exit Convert Fiber: %lu\n", ret);
     return (void *)ret;
 }
 
 void* CreateFiber(unsigned long dwStackSize, void* lpStartAddress,void* lpParameter)
 {
-    printf("Enter Create Fiber\n");
 	create_arg_t* args = (create_arg_t*) malloc(sizeof(create_arg_t));
 	void* stack;
     void* stack_pointer;
-    posix_memalign(&stack, 16, dwStackSize);
+    int err = posix_memalign(&stack, 16, dwStackSize);
+    if(!err) return (void*)-1;
     stack_pointer = (void *)((unsigned long)stack + dwStackSize - 8);
 	args->dwStackPointer = stack_pointer;
 	args->lpStartAddress = lpStartAddress;
@@ -58,19 +56,16 @@ void* CreateFiber(unsigned long dwStackSize, void* lpStartAddress,void* lpParame
         return (void *)-1;
     }
     free(args);
-    printf("Exit Create Fiber: %lu\n", ret);
     return (void *)ret;
 }
 
 void SwitchToFiber(void* lpFiber)
 {   
-    printf("Enter Switch Fiber: %lu\n", (unsigned long) lpFiber);
 	if (done == 0) init_file();
     if (ioctl(fd, SWITCHTOFIBER, (unsigned long) lpFiber) == -1)
     {
         printf("Unable to switch to the given fiber\n");
     }
-    printf("Exit Switch Fiber: %lu\n", (unsigned long) lpFiber);
     return;
 }
 
@@ -106,7 +101,7 @@ void* FlsGetValue(long dwFlsIndex)
     int ret = ioctl(fd, FLSGETVALUE, args);
     if (ret == -1){
         printf("Impossible to get the value\n");  
-        return -1;
+        return NULL;
     }
     if(args->lpFlsData == 0) return NULL;
     return (void *)args->lpFlsData;
