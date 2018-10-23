@@ -51,6 +51,10 @@ typedef int (*proc_pident_readdir_t)(struct file *file, struct dir_context *ctx,
 					 const struct pid_entry *ents,
 					 unsigned int nents);
 
+typedef int (*proc_setattr_t)(struct dentry *dentry, struct iattr *attr);
+
+typedef int (*pid_getattr_t)(const struct path *path, struct kstat *stat,
+		u32 request_mask, unsigned int query_flags);
 
 extern spinlock_t lock_fiber;
 int fh_install_hook (struct ftrace_hook *hook);
