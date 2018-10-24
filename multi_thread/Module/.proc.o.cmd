@@ -918,6 +918,17 @@ deps_/home/serenaferracci/Desktop/project_aosv/aosv/multi_thread/Module/proc.o :
   arch/x86/include/asm/uaccess_64.h \
   include/linux/fs_struct.h \
   include/linux/seq_file.h \
+  include/linux/kprobes.h \
+    $(wildcard include/config/kprobes.h) \
+    $(wildcard include/config/kretprobes.h) \
+    $(wildcard include/config/kprobes/sanity/test.h) \
+    $(wildcard include/config/optprobes.h) \
+    $(wildcard include/config/kprobes/on/ftrace.h) \
+  arch/x86/include/asm/kprobes.h \
+  include/asm-generic/kprobes.h \
+  arch/x86/include/asm/insn.h \
+  arch/x86/include/asm/inat.h \
+  arch/x86/include/asm/inat_types.h \
   /home/serenaferracci/Desktop/project_aosv/aosv/multi_thread/Module/proc.h \
   include/linux/proc_fs.h \
   /home/serenaferracci/Desktop/project_aosv/aosv/multi_thread/Module/fiber_ioctl.h \

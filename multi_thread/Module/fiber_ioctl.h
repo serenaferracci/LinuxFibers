@@ -10,20 +10,20 @@
 
 typedef struct
 {
-	bool running;
+    DECLARE_BITMAP(fls_bitmap, sizeof(MAX_FLS));
+    struct pt_regs regs;
+    struct hlist_node f_list;
+    struct fpu fpu_reg;
 	unsigned long index;
     unsigned long thread_id;
     unsigned long starting_point;
-    char name[8];
-	struct pt_regs regs;
-    struct hlist_node f_list;
-    DECLARE_BITMAP(fls_bitmap, sizeof(MAX_FLS));
     unsigned long fls_array[MAX_FLS];
-    struct fpu fpu_reg;
     unsigned long activations;
     unsigned long failed_activations;
     unsigned long starting_time;
     unsigned long total_time;
+    char name[8];
+    bool running;
 } fiber_arg_t;
 
 typedef struct
@@ -45,6 +45,7 @@ typedef struct
 
 
 process_arg_t* search_process(pid_t proc_id);
+thread_arg_t* search_thread(pid_t thr_id, process_arg_t* process);
 fiber_arg_t* search_fiber(int index, process_arg_t* process);
 
 #endif

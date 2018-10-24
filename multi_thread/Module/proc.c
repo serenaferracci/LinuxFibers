@@ -9,40 +9,29 @@
 #include <linux/dcache.h>
 #include <linux/pid.h>
 #include <linux/seq_file.h>
+#include <linux/percpu-defs.h>
+#include <linux/kprobes.h>
 #include "proc.h"
 #include "fiber_ioctl.h"
-
-static inline struct proc_inode *PROC_I(const struct inode *inode)
-{
-	return container_of(inode, struct proc_inode, vfs_inode);
-}
-
-static inline struct pid *proc_pid(struct inode *inode)
-{
-	return PROC_I(inode)->pid;
-}
-
-static inline struct task_struct *get_proc_task(struct inode *inode)
-{
-	return get_pid_task(proc_pid(inode), PIDTYPE_PID);
-}
 
 struct inode_operations fibers_iop;
 struct file_operations fibers_fop;
 struct file_operations file_fop;
+DEFINE_PER_CPU(struct task_struct*, scheduled) = NULL;
+struct kretprobe kretprobe_switch = {
+	.handler = switch_handler,
+};
 
 int show_file(struct seq_file *m, void *v){
 	void* data = m->private;
 	fiber_arg_t* fiber = (fiber_arg_t*)data;
-	if(fiber->running) seq_printf(m, "The fiber is currently running\n");
-	else seq_printf(m, "The fiber is not currently running\n");
+	if(fiber->running) seq_printf(m, "The fiber is currently running: yes\n");
+	else seq_printf(m, "The fiber is currently running: no\n");
 	seq_printf(m, "Entry point: %p\n", (void*)fiber->starting_point);
 	seq_printf(m, "Thread id: %lu\n", fiber->thread_id);
 	seq_printf(m, "Number of activations: %lu\n", fiber->activations);
 	seq_printf(m, "Number of  falied activations: %lu\n", fiber->failed_activations);
 	seq_printf(m, "Execution time: %lu\n", fiber->total_time);
-	/*
-– total execution time in that Fiber context*/
 	return 0;
 }
 
@@ -74,7 +63,7 @@ int fibers_readdir (struct file * file, struct dir_context * ctx){
 	
 	
 	task = get_proc_task(file_inode(file));
-	if(task == NULL) return 0;
+	if(task == NULL) return -ENOENT;
 	pid_process = task->tgid;
 	process = search_process(pid_process);
 
@@ -112,8 +101,8 @@ struct dentry* fibers_lookup (struct inode *dir, struct dentry *dentry, unsigned
 	proc_pident_lookup_t real_lookup;
 
 	task = get_proc_task(dir);
+	if(task == NULL) return ERR_PTR(-ENOENT);
 	pid_process = task->tgid;
-	if(task == NULL) return NULL;
 	process = search_process(pid_process);
 	spin_lock_irqsave(&lock_fiber, flags_lock);
 	num_fibers = process->fiber_id;
@@ -136,7 +125,9 @@ struct dentry* fibers_lookup (struct inode *dir, struct dentry *dentry, unsigned
 }
 
 static int fh_resolve_hook_address(struct ftrace_hook *hook)
-{
+{	
+	printk("In resolve\n");
+	printk("name: %s\n", hook->name);
 	hook->address = kallsyms_lookup_name(hook->name);
 
 	if (!hook->address) {
@@ -144,6 +135,7 @@ static int fh_resolve_hook_address(struct ftrace_hook *hook)
 		return -ENOENT;
 	}
 	*((unsigned long*) hook->original) = hook->address;
+	printk("Exit resolve\n");
 	return 0;
 }
 
@@ -240,8 +232,8 @@ static asmlinkage  struct dentry* fh_lookup(struct inode *dir, struct dentry *de
 		fibers_iop.getattr = (pid_getattr_t) kallsyms_lookup_name("pid_getattr");
 		fibers_iop.setattr = (proc_setattr_t) kallsyms_lookup_name("proc_setattr");
 		memcpy((void*)temp, ents,sizeof(struct pid_entry)*nents);
-		fiber.name = "fiber";
-		fiber.len  = sizeof("fiber") - 1;
+		fiber.name = "fibers";
+		fiber.len  = sizeof("fibers") - 1;
 		fiber.mode = S_IFDIR|S_IRUGO|S_IXUGO;
 		fiber.iop  = &fibers_iop;
 		fiber.fop  = &fibers_fop;
@@ -276,7 +268,7 @@ static asmlinkage int fh_readdir(struct file *file, struct dir_context *ctx,
 	task = get_proc_task(file_inode(file));
 	pid_process = task->tgid;
 	process = search_process(pid_process);
-	if(process != NULL && strncmp(file->f_path.dentry->d_name.name, "fiber", strlen("fiber")) != 0){
+	if(process != NULL && strncmp(file->f_path.dentry->d_name.name, "fibers", strlen("fibers")) != 0){
 		fibers_fop.iterate_shared = fibers_readdir;
 		fibers_fop.read = generic_read_dir;
 		fibers_fop.llseek = generic_file_llseek;
@@ -284,8 +276,8 @@ static asmlinkage int fh_readdir(struct file *file, struct dir_context *ctx,
 		fibers_iop.getattr = (pid_getattr_t) kallsyms_lookup_name("pid_getattr");
 		fibers_iop.setattr = (proc_setattr_t) kallsyms_lookup_name("proc_setattr");
 		memcpy((void*)temp, ents,sizeof(struct pid_entry)*nents);
-		fiber.name = "fiber";
-		fiber.len  = sizeof("fiber") - 1;
+		fiber.name = "fibers";
+		fiber.len  = sizeof("fibers") - 1;
 		fiber.mode = S_IFDIR|S_IRUGO|S_IXUGO;
 		fiber.iop  = &fibers_iop;
 		fiber.fop  = &fibers_fop;
@@ -303,6 +295,47 @@ static asmlinkage int fh_readdir(struct file *file, struct dir_context *ctx,
 }
 
 
+int switch_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+{
+	process_arg_t* process;
+	thread_arg_t* thread;
+	pid_t pid_process, pid_thread;
+	struct timespec ts;
+	struct task_struct* new_task;
+	struct task_struct* old_task = get_cpu_var(scheduled);
+	if(old_task != NULL){	
+		pid_process = old_task->tgid;
+		process = search_process(pid_process);
+		if(process != NULL){
+			pid_thread = old_task->pid;
+			thread = search_thread(pid_thread, process);
+			if(thread != NULL){
+				unsigned long time_fiber;
+				getnstimeofday(&ts);
+				time_fiber = (unsigned long)ts.tv_nsec + (unsigned long)ts.tv_sec*1000000000 - thread->active_fiber->starting_time;
+				time_fiber /= 1000;
+				thread->active_fiber->total_time += time_fiber;
+			}
+		}
+	}
+	new_task = current; 
+	pid_process = new_task->tgid;
+	process = search_process(pid_process);
+	if(process != NULL){
+		pid_thread = new_task->pid;
+		thread = search_thread(pid_thread, process);
+		if(thread != NULL){
+			getnstimeofday(&ts);
+			thread->active_fiber->starting_time = (unsigned long)ts.tv_nsec + (unsigned long)ts.tv_sec*1000000000;
+		}
+	}
+	this_cpu_write(scheduled, current);
+	put_cpu_var(scheduled);
+	return 0;
+}
+
+
+
 #define HOOK(_name, _function, _original)	\
 	{					\
 		.name = (_name),		\
@@ -317,9 +350,15 @@ static struct ftrace_hook demo_hooks[] = {
 
 int fh_init(void)
 {
-	int err;
+	int err, ret;
 	err = fh_install_hooks(demo_hooks, ARRAY_SIZE(demo_hooks));
 	if (err) return err;
+	kretprobe_switch.kp.symbol_name = "finish_task_switch";
+	ret = register_kretprobe(&kretprobe_switch);
+	if (ret < 0) {
+		printk(KERN_INFO "register_kretprobe failed, returned %d\n",ret);
+		return -1;
+	}
 	pr_info("module loaded\n");
 	return 0;
 }
@@ -327,6 +366,7 @@ int fh_init(void)
 void fh_exit(void)
 {
 	fh_remove_hooks(demo_hooks, ARRAY_SIZE(demo_hooks));
+	unregister_kretprobe(&kretprobe_switch);
 	pr_info("module unloaded\n");
 }
 

@@ -40,6 +40,8 @@ struct proc_inode {
 	struct inode vfs_inode;
 } __randomize_layout;
 
+
+
 int fibers_readdir (struct file *, struct dir_context *);
 
 typedef struct dentry * (*proc_pident_lookup_t)(struct inode *dir, 
@@ -56,7 +58,24 @@ typedef int (*proc_setattr_t)(struct dentry *dentry, struct iattr *attr);
 typedef int (*pid_getattr_t)(const struct path *path, struct kstat *stat,
 		u32 request_mask, unsigned int query_flags);
 
+static inline struct proc_inode *PROC_I(const struct inode *inode)
+{
+	return container_of(inode, struct proc_inode, vfs_inode);
+}
+
+static inline struct pid *proc_pid(struct inode *inode)
+{
+	return PROC_I(inode)->pid;
+}
+
+static inline struct task_struct *get_proc_task(struct inode *inode)
+{
+	return get_pid_task(proc_pid(inode), PIDTYPE_PID);
+}
+
+
 extern spinlock_t lock_fiber;
+int switch_handler(struct kretprobe_instance *ri, struct pt_regs *regs);
 int fh_install_hook (struct ftrace_hook *hook);
 void fh_remove_hook (struct ftrace_hook *hook);
 int fh_init(void);

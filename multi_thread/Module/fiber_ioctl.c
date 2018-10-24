@@ -86,7 +86,7 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 {
 	
 	if (cmd == CONVERTTOFIBER){
-
+		struct timespec ts;
 		pid_t pro_id, thr_id;
 		process_arg_t* process;
 		thread_arg_t* thread;
@@ -121,7 +121,8 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			fiber->running = true;
 			fiber->activations = 0;
 			fiber->failed_activations = 0;
-			fiber->starting_time = 0;
+			getnstimeofday(&ts);
+			fiber->starting_time = (unsigned long)ts.tv_nsec + (unsigned long)ts.tv_sec*1000000000;
 			fiber->total_time = 0;
 			memset((char *)&(fiber->fpu_reg), 0, sizeof(struct fpu));
 			copy_fxregs_to_kernel(&(fiber->fpu_reg));

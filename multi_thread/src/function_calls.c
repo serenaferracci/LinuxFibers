@@ -42,7 +42,7 @@ void* CreateFiber(unsigned long dwStackSize, void* lpStartAddress,void* lpParame
 	void* stack;
     void* stack_pointer;
     int err = posix_memalign(&stack, 16, dwStackSize);
-    if(!err) return (void*)-1;
+    if(err) return (void*)-1;
     stack_pointer = (void *)((unsigned long)stack + dwStackSize - 8);
 	args->dwStackPointer = stack_pointer;
 	args->lpStartAddress = lpStartAddress;
