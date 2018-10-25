@@ -10,6 +10,7 @@
 
 #include "../Module/function_macro.h"
 #include "function_calls.h"
+#ifndef USERSPACE
 
 int fd;
 int done = 0;
@@ -122,3 +123,5 @@ void FlsSetValue(long dwFlsIndex, void* lpFlsData)
     free(args);
     return;
 }
+
+#endif
