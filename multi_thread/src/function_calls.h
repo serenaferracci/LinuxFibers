@@ -7,7 +7,7 @@
 #define FILE_NAME  "/dev/fiber"
 #define STACK_SIZE (4096*2)
 
-#define USERSPACE
+//#define USERSPACE
 
 #ifdef USERSPACE
 

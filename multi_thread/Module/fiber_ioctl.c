@@ -29,6 +29,7 @@ static dev_t dev;
 static struct cdev c_dev;
 static struct class *cl;
 static struct kprobe probe;
+long count_threads;
 
 
 process_arg_t* search_process(pid_t proc_id){
@@ -72,12 +73,18 @@ int Pre_Handler(struct kprobe *p, struct pt_regs *regs){
 	process = search_process(pro_id);
 	if(process == NULL) return 0;
 	thread = search_thread(thr_id, process);
-	if(thread == NULL) return 0; 
+	if(thread == NULL) return 0;
+	__sync_fetch_and_sub(&count_threads, 1);
 	fiber = thread->active_fiber;
 	hash_del(&(thread->t_list));
 	hash_del(&(fiber->f_list));
 	kfree(thread);
 	kfree(fiber);
+	if(count_threads == 0){
+		hash_del(&(process->p_list));
+		kfree(process);
+		printk("All data structures are freed\n");
+	}
 	return 0;
 } 
  
@@ -128,9 +135,9 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			copy_fxregs_to_kernel(&(fiber->fpu_reg));
 			hash_add(process->fibers, &fiber->f_list, fiber->index);
 			thread->active_fiber = fiber;
+			__sync_fetch_and_add(&count_threads, 1);
 			return fiber->index;
 		}
-		
 		return -1;
 	}
 	

@@ -268,7 +268,7 @@ static asmlinkage int fh_readdir(struct file *file, struct dir_context *ctx,
 	task = get_proc_task(file_inode(file));
 	pid_process = task->tgid;
 	process = search_process(pid_process);
-	if(process != NULL && strncmp(file->f_path.dentry->d_name.name, "fibers", strlen("fibers")) != 0){
+	if(process != NULL && strncmp(file->f_path.dentry->d_name.name, "fibers", strnlen("fibers", 8)) != 0){
 		fibers_fop.iterate_shared = fibers_readdir;
 		fibers_fop.read = generic_read_dir;
 		fibers_fop.llseek = generic_file_llseek;
@@ -343,7 +343,7 @@ int switch_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 		.original = (_original),	\
 	}
 
-static struct ftrace_hook demo_hooks[] = {
+static struct ftrace_hook hooks[] = {
 	HOOK("proc_pident_readdir",  fh_readdir,  &real_readdir),
 	HOOK("proc_pident_lookup", fh_lookup, &real_lookup),
 };
@@ -351,7 +351,7 @@ static struct ftrace_hook demo_hooks[] = {
 int fh_init(void)
 {
 	int err, ret;
-	err = fh_install_hooks(demo_hooks, ARRAY_SIZE(demo_hooks));
+	err = fh_install_hooks(hooks, ARRAY_SIZE(hooks));
 	if (err) return err;
 	kretprobe_switch.kp.symbol_name = "finish_task_switch";
 	ret = register_kretprobe(&kretprobe_switch);
@@ -365,7 +365,7 @@ int fh_init(void)
 
 void fh_exit(void)
 {
-	fh_remove_hooks(demo_hooks, ARRAY_SIZE(demo_hooks));
+	fh_remove_hooks(hooks, ARRAY_SIZE(hooks));
 	unregister_kretprobe(&kretprobe_switch);
 	pr_info("module unloaded\n");
 }
