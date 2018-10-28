@@ -128,6 +128,7 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			fiber->running = true;
 			fiber->activations = 0;
 			fiber->failed_activations = 0;
+			bitmap_zero(fiber->fls_bitmap, MAX_FLS);
 			getnstimeofday(&ts);
 			fiber->starting_time = (unsigned long)ts.tv_nsec + (unsigned long)ts.tv_sec*1000000000;
 			fiber->total_time = 0;
@@ -170,6 +171,7 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			fiber->starting_point = (unsigned long)args->lpStartAddress;
 			fiber->starting_time = 0;
 			fiber->total_time = 0;
+			bitmap_zero(fiber->fls_bitmap, MAX_FLS);			
 			snprintf(fiber->name, 8, "%lu", fiber->index);
 			memcpy(&(fiber->regs), task_pt_regs(current), sizeof(struct pt_regs));
 			fiber->regs.sp = (unsigned long)args->dwStackPointer;

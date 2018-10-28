@@ -30,10 +30,6 @@ void* ConvertThreadToFiber()
 {	
 	if (done == 0) init_file();
     unsigned long ret = (unsigned long)ioctl(fd, CONVERTTOFIBER);
-    if ((unsigned long)ret == (unsigned long)-1){
-        printf("Unable to convert the thread\n");
-        return (void*)-1;
-    }
     return (void *)ret;
 }
 
@@ -51,11 +47,6 @@ void* CreateFiber(unsigned long dwStackSize, void* lpStartAddress,void* lpParame
 	
 	if (done == 0) init_file();
     unsigned long ret = (unsigned long)ioctl(fd, CREATEFIBER, args);
-    if ((unsigned long)ret == (unsigned long)-1){
-        printf("Unable to create a new fiber\n");
-        free(args);
-        return (void *)-1;
-    }
     free(args);
     return (void *)ret;
 }
@@ -63,10 +54,7 @@ void* CreateFiber(unsigned long dwStackSize, void* lpStartAddress,void* lpParame
 void SwitchToFiber(void* lpFiber)
 {   
 	if (done == 0) init_file();
-    if (ioctl(fd, SWITCHTOFIBER, (unsigned long) lpFiber) == -1)
-    {
-        printf("Unable to switch to the given fiber\n");
-    }
+    ioctl(fd, SWITCHTOFIBER, (unsigned long) lpFiber);
     return;
 }
 
@@ -74,10 +62,6 @@ long FlsAlloc()
 {   
 	if (done == 0) init_file();
     long ret = ioctl(fd, FLSALLOC);
-    if (ret == -1){
-        printf("Impossible to alloc the fls\n");
-        return -1;
-    }
     return ret;
 }
 
@@ -86,7 +70,6 @@ bool FlsFree(long dwFlsIndex)
 	if (done == 0) init_file();
 
     if (ioctl(fd, FLSFREE, dwFlsIndex) == -1){
-        printf("Impossible to free\n");
         return false;
     }
     return true;
@@ -101,7 +84,6 @@ void* FlsGetValue(long dwFlsIndex)
     args->dwFlsIndex = dwFlsIndex;
     int ret = ioctl(fd, FLSGETVALUE, args);
     if (ret == -1){
-        printf("Impossible to get the value\n");  
         return NULL;
     }
     if(args->lpFlsData == 0) return NULL;
@@ -117,9 +99,7 @@ void FlsSetValue(long dwFlsIndex, void* lpFlsData)
 	
 	if (done == 0) init_file();
 
-    if (ioctl(fd, FLSSETVALUE, args) == -1){
-        printf("Impossible to set the value\n");
-    }
+    ioctl(fd, FLSSETVALUE, args);
     free(args);
     return;
 }
