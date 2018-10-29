@@ -981,7 +981,6 @@ deps_/home/serenaferracci/Desktop/project_aosv/aosv/multi_thread/Module/fiber_io
   include/linux/hashtable.h \
   /home/serenaferracci/Desktop/project_aosv/aosv/multi_thread/Module/function_macro.h \
   /home/serenaferracci/Desktop/project_aosv/aosv/multi_thread/Module/proc.h \
-  /home/serenaferracci/Desktop/project_aosv/aosv/multi_thread/Module/declarations.h \
 
 /home/serenaferracci/Desktop/project_aosv/aosv/multi_thread/Module/fiber_ioctl.o: $(deps_/home/serenaferracci/Desktop/project_aosv/aosv/multi_thread/Module/fiber_ioctl.o)
 

@@ -68,10 +68,10 @@ int fibers_readdir (struct file * file, struct dir_context * ctx){
 	process = search_process(pid_process);
 
 	if(process != NULL){
-		spin_lock_irqsave(&lock_fiber, flags);
+		spin_lock_irqsave(&(process->lock_fiber), flags);
 		num_fibers = process->fiber_id;
 		ents_fiber = (struct pid_entry *) kzalloc (sizeof(struct pid_entry)*(num_fibers), GFP_KERNEL);
-		spin_unlock_irqrestore(&lock_fiber, flags);
+		spin_unlock_irqrestore(&(process->lock_fiber), flags);
 		hash_for_each_rcu(process->fibers, i, fiber, f_list){
 			unsigned long id = fiber->index;
 			ents_fiber[id].name = fiber->name;
@@ -104,10 +104,10 @@ struct dentry* fibers_lookup (struct inode *dir, struct dentry *dentry, unsigned
 	if(task == NULL) return ERR_PTR(-ENOENT);
 	pid_process = task->tgid;
 	process = search_process(pid_process);
-	spin_lock_irqsave(&lock_fiber, flags_lock);
+	spin_lock_irqsave(&(process->lock_fiber), flags_lock);
 	num_fibers = process->fiber_id;
 	ents_fiber = (struct pid_entry *) kzalloc (sizeof(struct pid_entry)*(num_fibers), GFP_KERNEL);
-	spin_unlock_irqrestore(&lock_fiber, flags_lock);
+	spin_unlock_irqrestore(&(process->lock_fiber), flags_lock);
 	hash_for_each_rcu(process->fibers, i, fiber, f_list){
 		unsigned long id = fiber->index;
 		ents_fiber[id].name = fiber->name;

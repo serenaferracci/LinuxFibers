@@ -68,7 +68,6 @@ long FlsAlloc()
 bool FlsFree(long dwFlsIndex)
 {   
 	if (done == 0) init_file();
-
     if (ioctl(fd, FLSFREE, dwFlsIndex) == -1){
         return false;
     }

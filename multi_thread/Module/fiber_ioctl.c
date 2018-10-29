@@ -20,7 +20,6 @@
 #include "function_macro.h"
 #include "proc.h"
 #include "fiber_ioctl.h"
-#include "declarations.h"
  
 #define FIRST_MINOR 0
 #define MINOR_CNT 1
@@ -31,6 +30,7 @@ static struct class *cl;
 static struct kprobe probe;
 long count_threads;
 
+DECLARE_HASHTABLE(list_process, 10);
 
 process_arg_t* search_process(pid_t proc_id){
 	process_arg_t* process;
@@ -43,12 +43,16 @@ process_arg_t* search_process(pid_t proc_id){
 }
 
 thread_arg_t* search_thread(pid_t thr_id, process_arg_t* process){
+	unsigned long flags;
 	thread_arg_t* thread;
+	spin_lock_irqsave(&(process->lock_hash), flags);
 	hash_for_each_possible(process->threads, thread, t_list, thr_id){
 		if(thread->pid == thr_id) {
+			spin_unlock_irqrestore(&(process->lock_hash), flags);
 			return thread;
 		}
 	}
+	spin_unlock_irqrestore(&(process->lock_hash), flags);
 	return NULL;
 }
 
@@ -68,6 +72,7 @@ int Pre_Handler(struct kprobe *p, struct pt_regs *regs){
 	process_arg_t* process;
 	fiber_arg_t* fiber;
 	pid_t pro_id, thr_id;
+	unsigned long flags;
 	pro_id = current->tgid;
 	thr_id = current->pid;
 	process = search_process(pro_id);
@@ -76,9 +81,11 @@ int Pre_Handler(struct kprobe *p, struct pt_regs *regs){
 	if(thread == NULL) return 0;
 	__sync_fetch_and_sub(&count_threads, 1);
 	fiber = thread->active_fiber;
+	spin_lock_irqsave(&(process->lock_hash), flags);
 	hash_del(&(thread->t_list));
-	hash_del(&(fiber->f_list));
 	kfree(thread);
+	spin_unlock_irqrestore(&(process->lock_hash), flags);
+	hash_del(&(fiber->f_list));
 	kfree(fiber);
 	if(count_threads == 0){
 		hash_del(&(process->p_list));
@@ -94,6 +101,7 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 	
 	if (cmd == CONVERTTOFIBER){
 		struct timespec ts;
+		unsigned long flags;
 		pid_t pro_id, thr_id;
 		process_arg_t* process;
 		thread_arg_t* thread;
@@ -118,8 +126,9 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			thread = (thread_arg_t*) kzalloc(sizeof(thread_arg_t), GFP_KERNEL);
 			if (!thread) return -ENOMEM;
 			thread->pid = thr_id;
+			spin_lock_irqsave(&(process->lock_hash), flags);
 			hash_add(process->threads, &thread->t_list, thread->pid);
-
+			spin_unlock_irqrestore(&(process->lock_hash), flags);
 			fiber->index = __sync_fetch_and_add(&process->fiber_id, 1);
 			fiber->thread_id = thr_id;
 			fiber->starting_point = task_pt_regs(current)->ip;
@@ -195,24 +204,24 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		process_arg_t* process;
 		thread_arg_t* thread;
 		fiber_arg_t* fiber;
+		unsigned long flags;
 		struct timespec ts;
-		spin_lock_irq(&lock_fiber);
 
 		pro_id = current->tgid;
 		thr_id = current->pid;
 		process = search_process(pro_id);
 		if(process == NULL) {
-			spin_unlock_irq(&lock_fiber);
 			return -1;
 		}
+		spin_lock_irqsave(&(process->lock_fiber), flags);
 		fiber = search_fiber(fib_id, process);
 		if(fiber == NULL) {
-			spin_unlock_irq(&lock_fiber);
+			spin_unlock_irqrestore(&(process->lock_fiber), flags);
 			return -1;
 		}
 		if(fiber->running){
 			fiber->failed_activations += 1;
-			spin_unlock_irq(&lock_fiber);
+			spin_unlock_irqrestore(&(process->lock_fiber), flags);
 			return -1;
 		}
 		thread = search_thread(thr_id, process);
@@ -239,10 +248,10 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			fiber->activations += 1;
 			getnstimeofday(&ts);
 			fiber->starting_time = (unsigned long)ts.tv_nsec + (unsigned long)ts.tv_sec*1000000000;
-			spin_unlock_irq(&lock_fiber);
+			spin_unlock_irqrestore(&(process->lock_fiber), flags);
 			return 0;
 		}
-		spin_unlock_irq(&lock_fiber);
+		spin_unlock_irqrestore(&(process->lock_fiber), flags);
 		return -1;
 	}
 	
@@ -255,17 +264,24 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		thr_id = current->pid;
 
 		process = search_process(pro_id);
-		if(process == NULL) return -1;
-
+		if(process == NULL) {
+			printk("non trova processo\n");
+			return -1;
+		}
+		
 		thread = search_thread(thr_id, process);
 		if(thread != NULL){
 			fiber_arg_t* fiber = thread->active_fiber;
 			long index = find_first_zero_bit(fiber->fls_bitmap, MAX_FLS);
-			if (index == MAX_FLS) return -1;
+			if (index == MAX_FLS) {
+			printk("non trova index\n");
+			return -1;
+		}
 			change_bit(index, fiber->fls_bitmap);
 			fiber->fls_array[index] = 0;
 			return index;
 		}
+		printk("non trova il thread\n");
 		return -1;
 	}
 	

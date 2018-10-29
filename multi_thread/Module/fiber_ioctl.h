@@ -35,12 +35,14 @@ typedef struct
 } thread_arg_t;
 
 typedef struct
-{
+{   
     pid_t pid;
+    long fiber_id;
     struct hlist_node p_list;
+    spinlock_t lock_fiber;
+    spinlock_t lock_hash;
     DECLARE_HASHTABLE(fibers, 10);
     DECLARE_HASHTABLE(threads, 10);
-    long fiber_id;
 } process_arg_t;
 
 
