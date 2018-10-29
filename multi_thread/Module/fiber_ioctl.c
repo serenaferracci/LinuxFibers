@@ -135,7 +135,7 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			snprintf(fiber->name, 8, "%lu", fiber->index);
 			memcpy(&(fiber->regs), task_pt_regs(current), sizeof(struct pt_regs));
 			fiber->running = true;
-			fiber->activations = 0;
+			fiber->activations = 1;
 			fiber->failed_activations = 0;
 			bitmap_zero(fiber->fls_bitmap, MAX_FLS);
 			getnstimeofday(&ts);
@@ -417,7 +417,8 @@ static int __init fiber_ioctl_init(void)
     probe.pre_handler = Pre_Handler;  
     probe.addr = (kprobe_opcode_t *)do_exit; 
     register_kprobe(&probe); 
-	fh_init();
+	if ((ret = fh_init()) < 0) return -1;
+	pr_info("module loaded\n");	
     return 0;
 }
  
@@ -429,11 +430,12 @@ static void __exit fiber_ioctl_exit(void)
     unregister_chrdev_region(dev, MINOR_CNT);
 	unregister_kprobe(&probe);
 	fh_exit();
+	pr_info("module unloaded\n");
 }
  
 module_init(fiber_ioctl_init);
 module_exit(fiber_ioctl_exit);
  
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Serena Ferracci");
-MODULE_DESCRIPTION("Fiber ioctl() Char Driver");
+MODULE_AUTHOR("Serena Ferracci -- ferracci.1649134@studenti.uniroma1.it");
+MODULE_DESCRIPTION("Fibers implementation in the Linux Kernel");

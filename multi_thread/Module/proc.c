@@ -359,7 +359,6 @@ int fh_init(void)
 		printk(KERN_INFO "register_kretprobe failed, returned %d\n",ret);
 		return -1;
 	}
-	pr_info("module loaded\n");
 	return 0;
 }
 
@@ -367,10 +366,5 @@ void fh_exit(void)
 {
 	fh_remove_hooks(hooks, ARRAY_SIZE(hooks));
 	unregister_kretprobe(&kretprobe_switch);
-	pr_info("module unloaded\n");
 }
 
-
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Serena Ferracci");
-MODULE_DESCRIPTION("Fiber ioctl() Char Driver");
