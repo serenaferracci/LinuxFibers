@@ -1,1 +1,0 @@
-cmd_/home/serenaferracci/Desktop/project_aosv/aosv/multi_thread/Module/fiber.o := ld -m elf_x86_64 -z max-page-size=0x200000   -r -o /home/serenaferracci/Desktop/project_aosv/aosv/multi_thread/Module/fiber.o /home/serenaferracci/Desktop/project_aosv/aosv/multi_thread/Module/fiber_ioctl.o /home/serenaferracci/Desktop/project_aosv/aosv/multi_thread/Module/proc.o 
