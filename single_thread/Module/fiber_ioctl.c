@@ -37,41 +37,32 @@ static int my_close(struct inode *i, struct file *f){
 }
 
 process_arg_t* search_process(pid_t proc_id){
-	process_arg_t* node, *process;
-	int exist = 0;
+	process_arg_t* node;
 	hash_for_each_possible_rcu(list_process, node, p_list, proc_id){
 		if(node->pid == proc_id) {
-			exist = 1;
-			process = node;
+			return node;
 		}
 	}
-	if(exist == 1) return process;
 	return NULL;
 }
 
 thread_arg_t* search_thread(pid_t thr_id, process_arg_t* process){
-	thread_arg_t* node, *thread;
-	int exist = 0;
+	thread_arg_t* node;
 	hash_for_each_possible_rcu(process->threads, node, t_list, thr_id){
 		if(node->pid == thr_id) {
-			exist = 1;
-			thread = node;
+			return node;
 		}
 	}
-	if(exist == 1) return thread;
 	return NULL;
 }
 
 fiber_arg_t* search_fiber(int index, process_arg_t* process){
-	fiber_arg_t *node, *fiber;
-	int exist = 0;
+	fiber_arg_t *node;
 	hash_for_each_possible_rcu(process->fibers, node, f_list, index){
 		if(node->index == index && !node->running) {
-			exist = 1;
-			fiber = node;
+			return node;
 		}
 	}
-	if(exist == 1) return fiber;
 	return NULL;
 }
 

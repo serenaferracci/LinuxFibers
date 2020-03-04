@@ -158,9 +158,6 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		process_arg_t* process;
 		thread_arg_t* thread;
 		int err;
-
-		err = access_ok(VERIFY_READ, (void *)arg, sizeof(create_arg_t));
-		if(!err) return -1;
 		err = copy_from_user(args, (void *)arg, sizeof(create_arg_t));
 		if(err) return -1;
 
@@ -316,8 +313,6 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		thread_arg_t *thread;
 		fls_arg_t* args = (fls_arg_t*) kzalloc (sizeof(fls_arg_t), GFP_KERNEL);
 		if (!args) return -ENOMEM;
-		err = access_ok(VERIFY_READ, (void *)arg, sizeof(fls_arg_t));
-		if(!err) return -1;
 		err = copy_from_user(args, (void *)arg, sizeof(fls_arg_t));
 		if(err) return -1;
 		index = args->dwFlsIndex;
@@ -333,8 +328,6 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 				int err;
 				unsigned long ret = fiber->fls_array[index];
 				args->lpFlsData = ret;
-				err = access_ok(VERIFY_WRITE, (void *)arg, sizeof(fls_arg_t));
-				if(!err) return -1;
 				err = copy_to_user((void *)arg, args, sizeof(fls_arg_t));
 				if(err) return -1;
 				kfree(args);
@@ -354,8 +347,6 @@ static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 
 		fls_arg_t* args = (fls_arg_t*) kzalloc (sizeof(fls_arg_t), GFP_KERNEL);
 		if (!args) return -ENOMEM;
-		err = access_ok(VERIFY_READ, (void *)arg, sizeof(fls_arg_t));
-		if(!err) return -1;
 		err = copy_from_user(args, (void *)arg, sizeof(fls_arg_t));
 		if(err) return -1;
 
